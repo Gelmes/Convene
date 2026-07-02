@@ -12,12 +12,21 @@ This repo is **one product in a three-product ecosystem**. The products are inte
 
 ## Status
 
-📐 **Architecture phase.** No application code yet — this repo currently holds the system design. See [`docs/`](docs/).
+🟢 **Phase 0 — foundation built & verified.** Turborepo monorepo, Next.js app, Prisma schema, Auth.js magic-link sign-in, multi-tenant org model, and the audited/encryptable health-data seam. `next build` and typecheck pass; the server boots and serves the landing + sign-in pages. Next: connect a Railway Postgres, then Phase 1 (field capture).
 
 - [Architecture](docs/ARCHITECTURE.md) — stack, multi-tenancy, PWA/offline, security model, monorepo layout
 - [Data model](docs/DATA-MODEL.md) — entities, health-data isolation, program tracker
 - [Roadmap](docs/ROADMAP.md) — the build phases
 - [Decisions](docs/DECISIONS.md) — the choices we locked in and why
+- [Deploy](docs/DEPLOY.md) — run locally + ship to Railway
+
+## Quick start
+
+```bash
+pnpm install
+pnpm db:generate
+pnpm dev   # http://localhost:3000  (sign-in works; DB actions need a Postgres — see docs/DEPLOY.md)
+```
 
 ## The one-paragraph pitch
 
