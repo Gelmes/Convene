@@ -1,0 +1,24 @@
+{
+  "name": "@convene/auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@auth/prisma-adapter": "^2.7.4",
+    "@convene/db": "workspace:*",
+    "next-auth": "5.0.0-beta.25"
+  },
+  "peerDependencies": {
+    "next": "*",
+    "react": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

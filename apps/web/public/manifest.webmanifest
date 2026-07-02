@@ -1,0 +1,16 @@
+{
+  "name": "Convene",
+  "short_name": "Convene",
+  "description": "Event host + participant health-data manager",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#171717",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
