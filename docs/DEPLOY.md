@@ -31,9 +31,14 @@ printed to the **server console**. Copy it into your browser to complete sign-in
 2. In Railway: **New Project → Deploy from GitHub repo**, pick this repo.
 3. Add the **PostgreSQL** plugin. Railway injects `DATABASE_URL` automatically.
 4. Set service variables: `AUTH_SECRET`, `AUTH_URL` (your Railway URL),
-   `EMAIL_FROM`, and `RESEND_API_KEY` (once you have a Resend account).
-   Optionally `ENCRYPTION_MODE=on` + `ENCRYPTION_KEY` to enable clinical-grade
-   field encryption.
+   `AUTH_TRUST_HOST=true`, `EMAIL_FROM`, and `RESEND_API_KEY` (once you have a
+   Resend account). Optionally `ENCRYPTION_MODE=on` + `ENCRYPTION_KEY` to enable
+   clinical-grade field encryption.
+
+   > **Gotcha:** if `AUTH_URL` / `AUTH_TRUST_HOST` are missing, Auth.js falls back
+   > to `http://localhost:3000` and magic-link URLs will point at localhost (they
+   > won't work in a browser). The app still boots — you only notice when a link
+   > is dead. Always set both on any non-localhost deploy.
 5. `railway.json` already defines build + start:
    - **build:** `pnpm install --frozen-lockfile && db generate && web build`
    - **start:** `prisma migrate deploy && next start`
