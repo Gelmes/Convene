@@ -1,5 +1,6 @@
 import { signIn } from "@convene/auth";
 import { signInSchema } from "@convene/schemas";
+import { Brand, Button, Card, Input, PageShell } from "@/components/ui";
 
 export default async function SignIn({
   searchParams,
@@ -19,31 +20,43 @@ export default async function SignIn({
   }
 
   return (
-    <main className="mx-auto max-w-sm p-8">
-      <h1 className="text-2xl font-bold">Sign in to Convene</h1>
+    <PageShell width="max-w-md">
+      <div className="flex justify-center">
+        <a href="/">
+          <Brand />
+        </a>
+      </div>
 
-      {sp.check ? (
-        <p className="mt-4 rounded bg-green-50 p-3 text-sm text-green-800">
-          Check your email for a magic link. In dev, the link is printed to the
-          server console.
+      <Card className="mt-10 p-6 sm:p-8">
+        <h1 className="text-xl font-semibold tracking-tight">Welcome back</h1>
+        <p className="mt-1 text-sm text-stone-500">
+          Enter your email and we&apos;ll send you a sign-in link.
         </p>
-      ) : null}
 
-      <form action={sendLink} className="mt-6 space-y-3">
-        <input
-          name="email"
-          type="email"
-          required
-          placeholder="you@example.com"
-          className="w-full rounded border border-neutral-300 p-2"
-        />
-        <button
-          type="submit"
-          className="w-full rounded bg-black p-2 text-white"
-        >
-          Send magic link
-        </button>
-      </form>
-    </main>
+        {sp.check ? (
+          <p className="mt-4 rounded-xl bg-emerald-50 p-3.5 text-sm leading-relaxed text-emerald-800 ring-1 ring-inset ring-emerald-600/10">
+            Check your email for a magic link. In dev, the link is printed to
+            the server console.
+          </p>
+        ) : null}
+
+        <form action={sendLink} className="mt-6 space-y-3">
+          <Input
+            name="email"
+            type="email"
+            required
+            autoFocus
+            placeholder="you@example.com"
+          />
+          <Button type="submit" className="w-full">
+            Send magic link
+          </Button>
+        </form>
+      </Card>
+
+      <p className="mt-6 text-center text-xs text-stone-400">
+        No password needed — the link signs you in.
+      </p>
+    </PageShell>
   );
 }

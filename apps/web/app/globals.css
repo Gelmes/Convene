@@ -2,12 +2,59 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Commit to a light scheme explicitly. `color-scheme: light dark` let the
+ * browser render native dark form controls on a light page (dark input fill,
+ * near-invisible text) whenever the OS was in dark mode.
+ */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
 }
 
 body {
-  background-color: #fafafa;
-  color: #171717;
-  -webkit-font-smoothing: antialiased;
+  @apply bg-stone-100 text-stone-900 antialiased;
+  background-image: radial-gradient(
+      at 100% 0%,
+      rgb(16 185 129 / 0.06) 0px,
+      transparent 50%
+    ),
+    radial-gradient(at 0% 100%, rgb(120 113 108 / 0.08) 0px, transparent 50%);
+  background-attachment: fixed;
+  min-height: 100dvh;
+}
+
+@layer base {
+  /* Deterministic form-control styling regardless of OS theme */
+  input,
+  select,
+  textarea {
+    @apply bg-white text-stone-900;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    @apply text-stone-400;
+  }
+
+  summary {
+    list-style: none;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+}
+
+@layer utilities {
+  .animate-rise {
+    animation: rise 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
