@@ -34,7 +34,17 @@ export default async function OrgHome({
   return (
     <PageShell>
       <BackLink href="/dashboard">All organizations</BackLink>
-      <h1 className="mt-3 text-2xl font-bold tracking-tight">{org?.name}</h1>
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <h1 className="min-w-0 truncate text-2xl font-bold tracking-tight">
+          {org?.name}
+        </h1>
+        <a
+          href={`/o/${orgId}/forms`}
+          className="shrink-0 rounded-xl px-3 py-1.5 text-sm font-medium text-stone-500 transition-colors hover:bg-stone-900/5 hover:text-stone-900"
+        >
+          Intake forms →
+        </a>
+      </div>
 
       <h2 className="mt-8 text-lg font-semibold">Events</h2>
 

@@ -24,12 +24,14 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  memberships    Membership[]
-  participants   Participant[]
-  events         Event[]
-  registrations  EventRegistration[]
-  healthReadings HealthReading[]
-  auditLogs      AuditLog[]
+  memberships     Membership[]
+  participants    Participant[]
+  events          Event[]
+  registrations   EventRegistration[]
+  healthReadings  HealthReading[]
+  formTemplates   FormTemplate[]
+  formSubmissions FormSubmission[]
+  auditLogs       AuditLog[]
 }
 
 model User {
@@ -81,10 +83,11 @@ model Participant {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user           User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
-  registrations  EventRegistration[]
-  healthReadings HealthReading[]
+  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user            User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  registrations   EventRegistration[]
+  healthReadings  HealthReading[]
+  formSubmissions FormSubmission[]
 
   @@index([organizationId])
 }
@@ -94,22 +97,81 @@ model Participant {
 // ---------------------------------------------------------------------------
 
 model Event {
-  id             String      @id @default(cuid())
-  organizationId String
-  title          String
-  description    String?
-  location       String?
-  startsAt       DateTime
-  endsAt         DateTime?
-  status         EventStatus @default(UPCOMING)
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  id                   String      @id @default(cuid())
+  organizationId       String
+  title                String
+  description          String?
+  location             String?
+  startsAt             DateTime
+  endsAt               DateTime?
+  status               EventStatus @default(UPCOMING)
+  publicRegistration   Boolean     @default(false)
+  intakeFormTemplateId String?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
 
-  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  registrations  EventRegistration[]
-  healthReadings HealthReading[]
+  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  intakeForm      FormTemplate?       @relation("EventIntakeForm", fields: [intakeFormTemplateId], references: [id], onDelete: SetNull)
+  registrations   EventRegistration[]
+  healthReadings  HealthReading[]
+  formSubmissions FormSubmission[]
 
   @@index([organizationId])
+}
+
+// ---------------------------------------------------------------------------
+// Custom intake forms (Phase 2)
+// ---------------------------------------------------------------------------
+
+model FormTemplate {
+  id             String     @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  version        Int        @default(1)
+  status         FormStatus @default(DRAFT)
+  questions      Json       @default("[]") // validated by @convene/schemas formQuestionsSchema
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  submissions  FormSubmission[]
+  intakeEvents Event[]          @relation("EventIntakeForm")
+
+  @@index([organizationId])
+}
+
+model FormSubmission {
+  id                String   @id @default(cuid())
+  organizationId    String
+  formTemplateId    String
+  formVersion       Int
+  participantId     String
+  eventId           String?
+  filledBy          FilledBy
+  submittedByUserId String?
+  answers           Json // self-describing: [{questionId, label, value}]
+  createdAt         DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  formTemplate FormTemplate @relation(fields: [formTemplateId], references: [id], onDelete: Cascade)
+  participant  Participant  @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  event        Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([participantId])
+  @@index([formTemplateId])
+}
+
+enum FormStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum FilledBy {
+  PARTICIPANT
+  HOST
 }
 
 model EventRegistration {

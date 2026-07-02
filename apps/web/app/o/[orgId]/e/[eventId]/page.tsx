@@ -1,8 +1,10 @@
 import { createTenantClient } from "@convene/db";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireMembership } from "@/lib/session";
 import { formatDateTime } from "@/lib/format";
-import { BackLink, PageShell } from "@/components/ui";
+import { BackLink, Badge, Button, Card, PageShell } from "@/components/ui";
+import { CopyField } from "@/components/copy-field";
 import { FieldCapture, type RosterEntry } from "@/components/field-capture";
 
 export default async function EventDetail({
@@ -19,6 +21,10 @@ export default async function EventDetail({
 
   const roster = await db.registrations.listForEvent(eventId);
   const readings = await db.healthReadings.listForEvent(eventId);
+  const publishedForms = await db.forms.listPublished();
+
+  const origin = process.env.AUTH_URL ?? "http://localhost:3000";
+  const publicUrl = `${origin.replace(/\/$/, "")}/r/${eventId}`;
 
   // Latest reading per participant (readings are newest-first).
   const latest = new Map<string, (typeof readings)[number]>();
@@ -43,6 +49,25 @@ export default async function EventDetail({
     };
   });
 
+  async function togglePublic() {
+    "use server";
+    const { userId } = await requireMembership(orgId);
+    const db = createTenantClient(orgId, userId);
+    const current = await db.events.get(eventId);
+    if (!current) return;
+    await db.events.setPublicRegistration(eventId, !current.publicRegistration);
+    revalidatePath(`/o/${orgId}/e/${eventId}`);
+  }
+
+  async function setIntakeForm(formData: FormData) {
+    "use server";
+    const { userId } = await requireMembership(orgId);
+    const db = createTenantClient(orgId, userId);
+    const formId = String(formData.get("formTemplateId") ?? "");
+    await db.events.setIntakeForm(eventId, formId || null);
+    revalidatePath(`/o/${orgId}/e/${eventId}`);
+  }
+
   return (
     <PageShell width="max-w-xl">
       <BackLink href={`/o/${orgId}`}>Events</BackLink>
@@ -53,6 +78,65 @@ export default async function EventDetail({
       </p>
 
       <FieldCapture orgId={orgId} eventId={eventId} roster={entries} />
+
+      {/* --- Registration settings --- */}
+      <Card className="mt-8 p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="font-medium">Public registration</h3>
+          <Badge>{event.publicRegistration ? "Open" : "Closed"}</Badge>
+        </div>
+
+        <form action={togglePublic} className="mt-3">
+          <Button
+            variant={event.publicRegistration ? "ghost" : "accent"}
+            className="w-full"
+          >
+            {event.publicRegistration
+              ? "Close public registration"
+              : "Open public registration"}
+          </Button>
+        </form>
+
+        {event.publicRegistration ? (
+          <div className="mt-4 space-y-2">
+            <p className="text-xs font-medium text-stone-500">
+              Share this link — anyone with it can register:
+            </p>
+            <CopyField value={publicUrl} />
+          </div>
+        ) : null}
+
+        <div className="mt-5 border-t border-stone-100 pt-4">
+          <h4 className="text-sm font-medium text-stone-700">Intake form</h4>
+          <p className="mt-0.5 text-xs text-stone-400">
+            Questions participants answer when they register.
+          </p>
+          <form action={setIntakeForm} className="mt-2 flex gap-2">
+            <select
+              name="formTemplateId"
+              defaultValue={event.intakeForm?.id ?? ""}
+              className="flex-1 rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-sm text-stone-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            >
+              <option value="">No intake form</option>
+              {publishedForms.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name} (v{f.version})
+                </option>
+              ))}
+            </select>
+            <Button className="shrink-0">Save</Button>
+          </form>
+          {publishedForms.length === 0 ? (
+            <p className="mt-2 text-xs text-stone-400">
+              No published forms yet —{" "}
+              <a href={`/o/${orgId}/forms`} className="underline hover:text-stone-600">
+                create one
+              </a>
+              .
+            </p>
+          ) : null}
+        </div>
+      </Card>
     </PageShell>
   );
 }

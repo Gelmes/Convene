@@ -56,7 +56,34 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
         });
       },
       get(id: string) {
-        return prisma.event.findFirst({ where: { id, organizationId } });
+        return prisma.event.findFirst({
+          where: { id, organizationId },
+          include: {
+            intakeForm: {
+              select: { id: true, name: true, status: true, version: true },
+            },
+          },
+        });
+      },
+      /** Attach/detach the intake form shown at public registration. */
+      async setIntakeForm(eventId: string, formTemplateId: string | null) {
+        if (formTemplateId) {
+          const form = await prisma.formTemplate.findFirst({
+            where: { id: formTemplateId, organizationId },
+            select: { id: true },
+          });
+          if (!form) throw new Error("Form not found in this organization");
+        }
+        return prisma.event.updateMany({
+          where: { id: eventId, organizationId },
+          data: { intakeFormTemplateId: formTemplateId },
+        });
+      },
+      setPublicRegistration(eventId: string, enabled: boolean) {
+        return prisma.event.updateMany({
+          where: { id: eventId, organizationId },
+          data: { publicRegistration: enabled },
+        });
       },
       create(data: {
         title: string;
@@ -157,6 +184,117 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
         return prisma.eventRegistration.updateMany({
           where: { id: registrationId, organizationId },
           data: { status },
+        });
+      },
+    },
+
+    // --- Intake forms ---------------------------------------------------------
+    forms: {
+      list() {
+        return prisma.formTemplate.findMany({
+          where: { organizationId },
+          orderBy: { createdAt: "desc" },
+          include: { _count: { select: { submissions: true } } },
+        });
+      },
+      listPublished() {
+        return prisma.formTemplate.findMany({
+          where: { organizationId, status: "PUBLISHED" },
+          orderBy: { name: "asc" },
+        });
+      },
+      get(id: string) {
+        return prisma.formTemplate.findFirst({ where: { id, organizationId } });
+      },
+      create(data: { name: string; description?: string }) {
+        return prisma.formTemplate.create({
+          data: {
+            organizationId,
+            name: data.name,
+            description: data.description ?? null,
+          },
+        });
+      },
+      /** Replace the question list (already validated by formQuestionsSchema). */
+      updateQuestions(id: string, questions: unknown[]) {
+        return prisma.formTemplate.updateMany({
+          where: { id, organizationId },
+          data: { questions: questions as object[] },
+        });
+      },
+      /** Publish a draft; re-publishing after edits bumps the version. */
+      async publish(id: string) {
+        const form = await prisma.formTemplate.findFirst({
+          where: { id, organizationId },
+          select: { status: true, version: true },
+        });
+        if (!form) throw new Error("Form not found in this organization");
+        return prisma.formTemplate.updateMany({
+          where: { id, organizationId },
+          data: {
+            status: "PUBLISHED",
+            version: form.status === "PUBLISHED" ? form.version + 1 : form.version,
+          },
+        });
+      },
+    },
+
+    // --- Form submissions -----------------------------------------------------
+    submissions: {
+      async create(input: {
+        formTemplateId: string;
+        participantId: string;
+        eventId?: string;
+        answers: Array<{ questionId: string; label: string; value: string }>;
+        filledBy: "PARTICIPANT" | "HOST";
+      }) {
+        const [form, participant] = await Promise.all([
+          prisma.formTemplate.findFirst({
+            where: { id: input.formTemplateId, organizationId },
+            select: { id: true, version: true },
+          }),
+          prisma.participant.findFirst({
+            where: { id: input.participantId, organizationId },
+            select: { id: true },
+          }),
+        ]);
+        if (!form) throw new Error("Form not found in this organization");
+        if (!participant) throw new Error("Participant not found in this organization");
+
+        const submission = await prisma.formSubmission.create({
+          data: {
+            organizationId,
+            formTemplateId: form.id,
+            formVersion: form.version,
+            participantId: input.participantId,
+            eventId: input.eventId ?? null,
+            filledBy: input.filledBy,
+            submittedByUserId: actorUserId ?? null,
+            answers: input.answers,
+          },
+        });
+
+        await recordAudit({
+          organizationId,
+          actorUserId,
+          action: "form_submission.create",
+          entityType: "FormSubmission",
+          entityId: submission.id,
+          metadata: {
+            participantId: input.participantId,
+            formTemplateId: form.id,
+            filledBy: input.filledBy,
+          },
+        });
+
+        return submission;
+      },
+
+      listForParticipant(participantId: string) {
+        return prisma.formSubmission.findMany({
+          where: { organizationId, participantId },
+          orderBy: { createdAt: "desc" },
+          include: { formTemplate: { select: { name: true } } },
         });
       },
     },

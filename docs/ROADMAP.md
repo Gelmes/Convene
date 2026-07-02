@@ -23,11 +23,15 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
   record BPs, come back online — everything syncs.
 
 ### Phase 2 — Custom intake forms
-- Form builder (custom questions → versioned JSON schema).
-- Public **self-registration** link per event (fills intake).
-- **Invite links**: "add participant + send link" to claim/complete intake.
-- Host can fill/edit a participant's intake.
-- **Demo:** publish a form, register via public link, host edits an answer.
+- **2a (done ✅):** Form builder (5 question types, versioned publish), attach a
+  form per event, public **self-registration** page (`/r/[eventId]`) with intake,
+  participant detail page (BP history + intake answers), host fill (re-filing
+  records a new submission — history preserved).
+- **2b (next):** **Invite links** — "add participant + send link" to
+  claim/complete intake; needs Resend wired for email delivery (link is
+  copyable without it).
+- **Demo:** publish a form, attach to an event, register via the public link,
+  view answers on the participant page.
 
 ### Phase 3 — Participant portal
 - Participant accounts **claim** their org-owned record via invite/registration.

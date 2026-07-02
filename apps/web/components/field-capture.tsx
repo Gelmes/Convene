@@ -263,11 +263,19 @@ export function FieldCapture({
                       <Button type="submit" variant="accent" className="w-full py-3">
                         Save reading
                       </Button>
-                      {last ? (
-                        <p className="text-center text-xs text-stone-400">
-                          Last: {last.systolic}/{last.diastolic} at {fmt(last.takenAt)}
-                        </p>
-                      ) : null}
+                      <div className="flex items-center justify-between text-xs">
+                        <a
+                          href={`/o/${orgId}/p/${p.participantId}`}
+                          className="font-medium text-stone-500 underline-offset-2 transition-colors hover:text-emerald-700 hover:underline"
+                        >
+                          History &amp; intake →
+                        </a>
+                        {last ? (
+                          <span className="text-stone-400">
+                            Last: {last.systolic}/{last.diastolic} at {fmt(last.takenAt)}
+                          </span>
+                        ) : null}
+                      </div>
                     </form>
                   </details>
                 </Card>

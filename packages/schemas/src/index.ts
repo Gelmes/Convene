@@ -32,6 +32,51 @@ export const createHealthReadingSchema = z.object({
 });
 export type CreateHealthReadingInput = z.infer<typeof createHealthReadingSchema>;
 
+// --- Custom intake forms (Phase 2) --------------------------------------------
+
+export const formQuestionTypeSchema = z.enum([
+  "text",
+  "textarea",
+  "number",
+  "select",
+  "checkbox",
+]);
+export type FormQuestionType = z.infer<typeof formQuestionTypeSchema>;
+
+export const formQuestionSchema = z.object({
+  id: z.string().uuid(),
+  label: z.string().min(1).max(200),
+  type: formQuestionTypeSchema,
+  required: z.boolean().default(false),
+  options: z.array(z.string().min(1).max(100)).max(20).optional(), // for "select"
+});
+export type FormQuestion = z.infer<typeof formQuestionSchema>;
+
+export const formQuestionsSchema = z.array(formQuestionSchema).max(50);
+
+export const createFormTemplateSchema = z.object({
+  name: z.string().min(2, "Name is too short").max(120),
+  description: z.string().max(500).optional(),
+});
+export type CreateFormTemplateInput = z.infer<typeof createFormTemplateSchema>;
+
+/** Answers are self-describing so old submissions survive form edits. */
+export const formAnswerSchema = z.object({
+  questionId: z.string(),
+  label: z.string().max(200),
+  value: z.string().max(4000),
+});
+export type FormAnswer = z.infer<typeof formAnswerSchema>;
+export const formAnswersSchema = z.array(formAnswerSchema).max(50);
+
+export const publicRegistrationSchema = z.object({
+  firstName: z.string().min(1, "First name is required").max(80),
+  lastName: z.string().max(80).optional(),
+  email: emailSchema.optional(),
+  answers: formAnswersSchema.optional(),
+});
+export type PublicRegistrationInput = z.infer<typeof publicRegistrationSchema>;
+
 // --- Offline sync (Phase 1b) -------------------------------------------------
 // Ops are created on the device with client-generated UUIDs so the server can
 // apply them idempotently — a retried batch never duplicates data.
