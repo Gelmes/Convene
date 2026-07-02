@@ -87,10 +87,15 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
           include: { participant: true },
         });
       },
-      /** Add a participant to an event on the spot (creates the participant too). */
+      /**
+       * Add a participant to an event on the spot (creates the participant too).
+       * Pass a client-generated `participantId` (offline outbox) to make the
+       * call idempotent — replaying the same op is a no-op.
+       */
       async addNewParticipant(
         eventId: string,
         data: { firstName: string; lastName?: string; email?: string; phone?: string },
+        participantId?: string,
       ) {
         const event = await prisma.event.findFirst({
           where: { id: eventId, organizationId },
@@ -99,22 +104,51 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
         if (!event) throw new Error("Event not found in this organization");
 
         return prisma.$transaction(async (tx) => {
-          const participant = await tx.participant.create({
-            data: {
-              organizationId,
-              firstName: data.firstName,
-              lastName: data.lastName ?? null,
-              email: data.email ?? null,
-              phone: data.phone ?? null,
-            },
-          });
-          return tx.eventRegistration.create({
-            data: {
+          let pid = participantId;
+          if (pid) {
+            // Idempotent path: create only if this id doesn't exist yet, and
+            // never touch a row that belongs to another organization.
+            const existing = await tx.participant.findUnique({
+              where: { id: pid },
+              select: { id: true, organizationId: true },
+            });
+            if (existing && existing.organizationId !== organizationId) {
+              throw new Error("Participant id conflict");
+            }
+            if (!existing) {
+              await tx.participant.create({
+                data: {
+                  id: pid,
+                  organizationId,
+                  firstName: data.firstName,
+                  lastName: data.lastName ?? null,
+                  email: data.email ?? null,
+                  phone: data.phone ?? null,
+                },
+              });
+            }
+          } else {
+            const participant = await tx.participant.create({
+              data: {
+                organizationId,
+                firstName: data.firstName,
+                lastName: data.lastName ?? null,
+                email: data.email ?? null,
+                phone: data.phone ?? null,
+              },
+            });
+            pid = participant.id;
+          }
+
+          return tx.eventRegistration.upsert({
+            where: { eventId_participantId: { eventId, participantId: pid } },
+            create: {
               organizationId,
               eventId,
-              participantId: participant.id,
+              participantId: pid,
               source: "HOST_ADDED",
             },
+            update: {},
             include: { participant: true },
           });
         });
@@ -136,7 +170,24 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
         pulse?: number;
         note?: string;
         eventId?: string;
+        /** Client-generated UUID (offline outbox) — makes the call idempotent. */
+        id?: string;
+        /** When the reading was actually taken (offline capture time). */
+        takenAt?: Date;
       }) {
+        // Idempotency: a replayed op returns the existing row untouched.
+        if (input.id) {
+          const existing = await prisma.healthReading.findUnique({
+            where: { id: input.id },
+          });
+          if (existing) {
+            if (existing.organizationId !== organizationId) {
+              throw new Error("Reading id conflict");
+            }
+            return { ...existing, note: decryptField(existing.note) };
+          }
+        }
+
         // Enforce that the participant belongs to THIS organization.
         const participant = await prisma.participant.findFirst({
           where: { id: input.participantId, organizationId },
@@ -148,6 +199,7 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
 
         const reading = await prisma.healthReading.create({
           data: {
+            ...(input.id ? { id: input.id } : {}),
             organizationId,
             participantId: input.participantId,
             eventId: input.eventId ?? null,
@@ -156,6 +208,7 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
             pulse: input.pulse ?? null,
             note: encryptField(input.note ?? null),
             takenByUserId: actorUserId ?? null,
+            ...(input.takenAt ? { takenAt: input.takenAt } : {}),
           },
         });
 

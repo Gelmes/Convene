@@ -16,9 +16,11 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
 - **1a (done ✅):** Events CRUD, add participants **on the spot**, mobile-first
   **field capture** (pick participant → BP + note → save), roster per event with
   latest reading. Live on Railway.
-- **1b (next):** **PWA + offline** — installable, IndexedDB cache, sync queue
-  flushes when back online.
-- **Demo:** run a mock event on your phone, record BPs. (Offline in 1b.)
+- **1b (done ✅):** **PWA + offline** — service worker caches visited pages,
+  IndexedDB outbox with idempotent batch sync (`/api/o/[orgId]/sync`),
+  online/offline + pending-sync indicators, offline-correct `takenAt` timestamps.
+- **Demo:** open an event on your phone, go airplane mode, add a participant and
+  record BPs, come back online — everything syncs.
 
 ### Phase 2 — Custom intake forms
 - Form builder (custom questions → versioned JSON schema).
@@ -53,6 +55,15 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
 - (Much later) domain reselling via a registrar reseller API.
 
 ---
+
+## Operational TODOs (not code phases)
+- [ ] **Verify a domain in Resend** once the product domain is bought. Until then the
+      free `onboarding@resend.dev` sender only delivers to the Resend account owner's
+      email (marco.firsteye@gmail.com) — participants/other hosts can't receive
+      magic links. Steps: Resend → Domains → Add domain → set the DNS records →
+      change `EMAIL_FROM` to e.g. `Convene <signin@yourdomain.com>`.
+- [ ] Set `RESEND_API_KEY` on Railway (magic links currently print to deploy logs).
+- [ ] Rename the product (Convene is a placeholder) before public assets.
 
 ## Suggested near-term focus
 **Phases 0 → 1** get you the single most valuable, demoable loop: run a real event and capture BP on your phone, offline. Everything after that is additive. I'd treat 0+1 as the first milestone before touching forms.

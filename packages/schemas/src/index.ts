@@ -32,6 +32,41 @@ export const createHealthReadingSchema = z.object({
 });
 export type CreateHealthReadingInput = z.infer<typeof createHealthReadingSchema>;
 
+// --- Offline sync (Phase 1b) -------------------------------------------------
+// Ops are created on the device with client-generated UUIDs so the server can
+// apply them idempotently — a retried batch never duplicates data.
+
+export const participantOpSchema = z.object({
+  kind: z.literal("participant"),
+  id: z.string().uuid(),
+  eventId: z.string().min(1),
+  firstName: z.string().min(1).max(80),
+  lastName: z.string().max(80).optional(),
+});
+
+export const readingOpSchema = z.object({
+  kind: z.literal("reading"),
+  id: z.string().uuid(),
+  eventId: z.string().min(1),
+  participantId: z.string().min(1),
+  systolic: z.coerce.number().int().min(40).max(300),
+  diastolic: z.coerce.number().int().min(20).max(200),
+  pulse: z.coerce.number().int().min(20).max(250).optional(),
+  note: z.string().max(2000).optional(),
+  takenAt: z.coerce.date(), // captured at entry time, not sync time
+});
+
+export const syncOpSchema = z.discriminatedUnion("kind", [
+  participantOpSchema,
+  readingOpSchema,
+]);
+export type SyncOp = z.infer<typeof syncOpSchema>;
+
+export const syncBatchSchema = z.object({
+  ops: z.array(syncOpSchema).min(1).max(200),
+});
+export type SyncBatch = z.infer<typeof syncBatchSchema>;
+
 export const createEventSchema = z.object({
   title: z.string().min(2, "Title is too short").max(140),
   description: z.string().max(2000).optional(),
