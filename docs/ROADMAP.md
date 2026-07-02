@@ -13,11 +13,12 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
 - **Demo:** create an account, create an org, invite a teammate.
 
 ### Phase 1 — Core capture *(the heartbeat)*
-- Events CRUD. Add participants **on the spot** (name only).
-- Mobile-first **field capture**: pick participant → BP + note → save, few taps.
-- **PWA + offline:** installable, IndexedDB cache, sync queue flushes when online.
-- Participant roster per event.
-- **Demo:** run a mock event on your phone offline, record BPs, watch them sync.
+- **1a (done ✅):** Events CRUD, add participants **on the spot**, mobile-first
+  **field capture** (pick participant → BP + note → save), roster per event with
+  latest reading. Live on Railway.
+- **1b (next):** **PWA + offline** — installable, IndexedDB cache, sync queue
+  flushes when back online.
+- **Demo:** run a mock event on your phone, record BPs. (Offline in 1b.)
 
 ### Phase 2 — Custom intake forms
 - Form builder (custom questions → versioned JSON schema).
