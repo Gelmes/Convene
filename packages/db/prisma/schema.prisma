@@ -26,6 +26,8 @@ model Organization {
 
   memberships    Membership[]
   participants   Participant[]
+  events         Event[]
+  registrations  EventRegistration[]
   healthReadings HealthReading[]
   auditLogs      AuditLog[]
 }
@@ -79,11 +81,74 @@ model Participant {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user           User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  registrations  EventRegistration[]
   healthReadings HealthReading[]
 
   @@index([organizationId])
+}
+
+// ---------------------------------------------------------------------------
+// Events (Phase 1)
+// ---------------------------------------------------------------------------
+
+model Event {
+  id             String      @id @default(cuid())
+  organizationId String
+  title          String
+  description    String?
+  location       String?
+  startsAt       DateTime
+  endsAt         DateTime?
+  status         EventStatus @default(UPCOMING)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  registrations  EventRegistration[]
+  healthReadings HealthReading[]
+
+  @@index([organizationId])
+}
+
+model EventRegistration {
+  id             String             @id @default(cuid())
+  organizationId String
+  eventId        String
+  participantId  String
+  status         RegistrationStatus @default(REGISTERED)
+  source         RegistrationSource @default(HOST_ADDED)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  event        Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  participant  Participant  @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, participantId])
+  @@index([organizationId])
+  @@index([eventId])
+}
+
+enum EventStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum RegistrationStatus {
+  REGISTERED
+  CHECKED_IN
+  ATTENDED
+  NO_SHOW
+}
+
+enum RegistrationSource {
+  SELF
+  HOST_ADDED
+  INVITE
 }
 
 // ---------------------------------------------------------------------------
@@ -94,6 +159,7 @@ model HealthReading {
   id             String   @id @default(cuid())
   organizationId String
   participantId  String
+  eventId        String? // optional link to the event where it was taken
   systolic       Int
   diastolic      Int
   pulse          Int?
@@ -104,9 +170,11 @@ model HealthReading {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   participant  Participant  @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  event        Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
   @@index([participantId])
+  @@index([eventId])
 }
 
 model AuditLog {

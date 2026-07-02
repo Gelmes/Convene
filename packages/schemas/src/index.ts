@@ -24,9 +24,19 @@ export type CreateParticipantInput = z.infer<typeof createParticipantSchema>;
 
 export const createHealthReadingSchema = z.object({
   participantId: z.string().min(1),
+  eventId: z.string().min(1).optional(),
   systolic: z.coerce.number().int().min(40).max(300),
   diastolic: z.coerce.number().int().min(20).max(200),
   pulse: z.coerce.number().int().min(20).max(250).optional(),
   note: z.string().max(2000).optional(),
 });
 export type CreateHealthReadingInput = z.infer<typeof createHealthReadingSchema>;
+
+export const createEventSchema = z.object({
+  title: z.string().min(2, "Title is too short").max(140),
+  description: z.string().max(2000).optional(),
+  location: z.string().max(200).optional(),
+  startsAt: z.coerce.date(),
+  endsAt: z.coerce.date().optional(),
+});
+export type CreateEventInput = z.infer<typeof createEventSchema>;

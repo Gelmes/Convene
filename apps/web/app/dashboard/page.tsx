@@ -68,14 +68,16 @@ export default async function Dashboard() {
           </li>
         ) : (
           memberships.map((m) => (
-            <li
-              key={m.id}
-              className="flex items-center justify-between rounded border border-neutral-200 bg-white p-3"
-            >
-              <span className="font-medium">{m.organization.name}</span>
-              <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">
-                {m.role}
-              </span>
+            <li key={m.id}>
+              <a
+                href={`/o/${m.organizationId}`}
+                className="flex items-center justify-between rounded border border-neutral-200 bg-white p-3 hover:border-neutral-400"
+              >
+                <span className="font-medium">{m.organization.name}</span>
+                <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">
+                  {m.role}
+                </span>
+              </a>
             </li>
           ))
         )}
