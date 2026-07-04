@@ -32,6 +32,7 @@ model Organization {
   formTemplates   FormTemplate[]
   formSubmissions FormSubmission[]
   invites         Invite[]
+  photos          Photo[]
   auditLogs       AuditLog[]
 }
 
@@ -118,8 +119,38 @@ model Event {
   healthReadings  HealthReading[]
   formSubmissions FormSubmission[]
   invites         Invite[]
+  photos          Photo[]
 
   @@index([organizationId])
+}
+
+// ---------------------------------------------------------------------------
+// Event photos (Phase 4) — binaries live in Cloudflare R2, metadata here
+// ---------------------------------------------------------------------------
+
+model Photo {
+  id               String          @id @default(cuid())
+  organizationId   String
+  eventId          String
+  storageKey       String          @unique // R2 object key
+  contentType      String
+  size             Int // bytes
+  caption          String?
+  visibility       PhotoVisibility @default(PARTICIPANTS)
+  uploadedByUserId String?
+  createdAt        DateTime        @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  event        Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([eventId])
+}
+
+enum PhotoVisibility {
+  PUBLIC
+  PARTICIPANTS
+  PRIVATE
 }
 
 // ---------------------------------------------------------------------------

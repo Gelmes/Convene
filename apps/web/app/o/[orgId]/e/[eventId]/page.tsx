@@ -3,9 +3,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireMembership } from "@/lib/session";
 import { formatDateTime } from "@/lib/format";
+import { r2Configured, r2Delete, r2PresignGet } from "@/lib/r2";
 import { BackLink, Badge, Button, Card, PageShell } from "@/components/ui";
 import { CopyField } from "@/components/copy-field";
 import { FieldCapture, type RosterEntry } from "@/components/field-capture";
+import { PhotoUploader } from "@/components/photo-uploader";
 
 export default async function EventDetail({
   params,
@@ -25,6 +27,15 @@ export default async function EventDetail({
 
   const origin = process.env.AUTH_URL ?? "http://localhost:3000";
   const publicUrl = `${origin.replace(/\/$/, "")}/r/${eventId}`;
+
+  const photosEnabled = r2Configured();
+  const photos = photosEnabled ? await db.photos.listForEvent(eventId) : [];
+  const photoUrls = await Promise.all(
+    photos.map(async (p) => ({
+      ...p,
+      url: await r2PresignGet(p.storageKey),
+    })),
+  );
 
   // Latest reading per participant (readings are newest-first).
   const latest = new Map<string, (typeof readings)[number]>();
@@ -48,6 +59,15 @@ export default async function EventDetail({
         : null,
     };
   });
+
+  async function deletePhoto(formData: FormData) {
+    "use server";
+    const { userId } = await requireMembership(orgId);
+    const db = createTenantClient(orgId, userId);
+    const photo = await db.photos.delete(String(formData.get("photoId")));
+    if (photo) await r2Delete(photo.storageKey).catch(() => {});
+    revalidatePath(`/o/${orgId}/e/${eventId}`);
+  }
 
   async function togglePublic() {
     "use server";
@@ -78,6 +98,54 @@ export default async function EventDetail({
       </p>
 
       <FieldCapture orgId={orgId} eventId={eventId} roster={entries} />
+
+      {/* --- Photos --- */}
+      <Card className="mt-8 p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="font-medium">Photos</h3>
+          {photos.length > 0 ? <Badge>{photos.length}</Badge> : null}
+        </div>
+        <p className="mt-1 text-xs text-stone-400">
+          Visible to participants who attended this event (and to your team).
+        </p>
+        {photosEnabled ? (
+          <div className="mt-4 space-y-4">
+            <PhotoUploader orgId={orgId} eventId={eventId} />
+            {photoUrls.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {photoUrls.map((p) => (
+                  <div key={p.id} className="group relative aspect-square">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={p.url}
+                      alt={p.caption ?? "Event photo"}
+                      className="h-full w-full rounded-xl object-cover"
+                      loading="lazy"
+                    />
+                    <form
+                      action={deletePhoto}
+                      className="absolute right-1.5 top-1.5 opacity-0 transition-opacity group-hover:opacity-100"
+                    >
+                      <input type="hidden" name="photoId" value={p.id} />
+                      <button
+                        aria-label="Delete photo"
+                        className="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-sm text-white backdrop-blur transition-colors hover:bg-red-600"
+                      >
+                        ✕
+                      </button>
+                    </form>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <p className="mt-3 rounded-xl bg-stone-50 p-3.5 text-sm text-stone-500 ring-1 ring-inset ring-stone-200">
+            Photo storage isn&apos;t configured yet — set the R2 environment
+            variables on Railway (see docs/DEPLOY.md).
+          </p>
+        )}
+      </Card>
 
       {/* --- Registration settings --- */}
       <Card className="mt-8 p-5">

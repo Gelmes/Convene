@@ -28,7 +28,23 @@ export async function getPortalData(userId: string, email?: string | null) {
         orderBy: { event: { startsAt: "desc" } },
         include: {
           event: {
-            select: { id: true, title: true, startsAt: true, location: true },
+            select: {
+              id: true,
+              title: true,
+              startsAt: true,
+              location: true,
+              // Only photos a participant may see — never PRIVATE ones.
+              photos: {
+                where: { visibility: { in: ["PUBLIC", "PARTICIPANTS"] } },
+                orderBy: { createdAt: "desc" },
+                select: {
+                  id: true,
+                  storageKey: true,
+                  caption: true,
+                  contentType: true,
+                },
+              },
+            },
           },
         },
       },

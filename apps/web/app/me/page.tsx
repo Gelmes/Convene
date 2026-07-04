@@ -3,6 +3,7 @@ import { getPortalData } from "@convene/db";
 import { formAnswersSchema } from "@convene/schemas";
 import { redirect } from "next/navigation";
 import { formatDateTime } from "@/lib/format";
+import { r2Configured, r2PresignGet } from "@/lib/r2";
 import { Badge, Brand, Card, LinkButton, PageShell } from "@/components/ui";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -18,6 +19,19 @@ export default async function Portal() {
   if (!userId) redirect("/sign-in");
 
   const profiles = await getPortalData(userId, session?.user?.email);
+
+  // Presign photo URLs for every attended event (bucket is private).
+  const photoUrls = new Map<string, string>();
+  if (r2Configured()) {
+    const keys = profiles.flatMap((p) =>
+      p.registrations.flatMap((reg) => reg.event.photos.map((ph) => ph.storageKey)),
+    );
+    await Promise.all(
+      keys.map(async (key) => {
+        photoUrls.set(key, await r2PresignGet(key));
+      }),
+    );
+  }
 
   return (
     <PageShell>
@@ -64,20 +78,44 @@ export default async function Portal() {
               ) : (
                 <ul className="mt-2 divide-y divide-stone-100">
                   {p.registrations.map((reg) => (
-                    <li
-                      key={reg.id}
-                      className="flex items-center justify-between gap-3 py-2.5"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium text-stone-900">
-                          {reg.event.title}
+                    <li key={reg.id} className="py-2.5">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="min-w-0">
+                          <span className="block truncate font-medium text-stone-900">
+                            {reg.event.title}
+                          </span>
+                          <span className="text-sm text-stone-500">
+                            {formatDateTime(reg.event.startsAt)}
+                            {reg.event.location ? ` · ${reg.event.location}` : ""}
+                          </span>
                         </span>
-                        <span className="text-sm text-stone-500">
-                          {formatDateTime(reg.event.startsAt)}
-                          {reg.event.location ? ` · ${reg.event.location}` : ""}
-                        </span>
-                      </span>
-                      <Badge>{STATUS_LABELS[reg.status] ?? reg.status}</Badge>
+                        <Badge>{STATUS_LABELS[reg.status] ?? reg.status}</Badge>
+                      </div>
+                      {reg.event.photos.length > 0 ? (
+                        <div className="mt-2 grid grid-cols-4 gap-1.5 sm:grid-cols-6">
+                          {reg.event.photos.map((ph) => {
+                            const url = photoUrls.get(ph.storageKey);
+                            if (!url) return null;
+                            return (
+                              <a
+                                key={ph.id}
+                                href={url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="block aspect-square overflow-hidden rounded-lg"
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={url}
+                                  alt={ph.caption ?? "Event photo"}
+                                  loading="lazy"
+                                  className="h-full w-full object-cover transition-transform duration-200 hover:scale-105"
+                                />
+                              </a>
+                            );
+                          })}
+                        </div>
+                      ) : null}
                     </li>
                   ))}
                 </ul>

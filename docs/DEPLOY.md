@@ -39,6 +39,17 @@ printed to the **server console**. Copy it into your browser to complete sign-in
    > to `http://localhost:3000` and magic-link URLs will point at localhost (they
    > won't work in a browser). The app still boots — you only notice when a link
    > is dead. Always set both on any non-localhost deploy.
+
+5. **Event photos (Cloudflare R2).** Create a bucket + API token in the
+   Cloudflare dashboard (R2 → Create bucket; R2 → Manage API Tokens →
+   Create API Token with *Object Read & Write* scoped to that bucket), then set:
+   - `R2_ACCOUNT_ID` — Cloudflare account id (shown on the R2 overview page)
+   - `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` — from the API token
+   - `R2_BUCKET` — the bucket name
+
+   The bucket stays **private** — no public access, no CORS config needed.
+   Uploads are proxied through the app; images render via presigned GET URLs.
+   Without these vars the app runs fine; the Photos card shows a setup note.
 5. `railway.json` already defines build + start:
    - **build:** `pnpm install --frozen-lockfile && db generate && web build`
    - **start:** `prisma migrate deploy && next start`

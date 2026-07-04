@@ -359,6 +359,50 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
       },
     },
 
+    // --- Event photos (binaries in R2, metadata here) --------------------------
+    photos: {
+      listForEvent(eventId: string) {
+        return prisma.photo.findMany({
+          where: { organizationId, eventId },
+          orderBy: { createdAt: "desc" },
+        });
+      },
+      async create(input: {
+        eventId: string;
+        storageKey: string;
+        contentType: string;
+        size: number;
+        caption?: string;
+      }) {
+        const event = await prisma.event.findFirst({
+          where: { id: input.eventId, organizationId },
+          select: { id: true },
+        });
+        if (!event) throw new Error("Event not found in this organization");
+
+        return prisma.photo.create({
+          data: {
+            organizationId,
+            eventId: input.eventId,
+            storageKey: input.storageKey,
+            contentType: input.contentType,
+            size: input.size,
+            caption: input.caption ?? null,
+            uploadedByUserId: actorUserId ?? null,
+          },
+        });
+      },
+      /** Removes the DB row; caller is responsible for deleting the R2 object. */
+      async delete(photoId: string) {
+        const photo = await prisma.photo.findFirst({
+          where: { id: photoId, organizationId },
+        });
+        if (!photo) return null;
+        await prisma.photo.delete({ where: { id: photo.id } });
+        return photo;
+      },
+    },
+
     // --- Health readings (isolated + audited + encrypted note) --------------
     healthReadings: {
       async create(input: {

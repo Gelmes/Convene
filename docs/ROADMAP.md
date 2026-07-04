@@ -46,10 +46,14 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
 - **Demo:** accept an invite (or register) with your email, sign in, see your
   own history at `/me`.
 
-### Phase 4 — Photos
-- Cloudflare R2 storage; per-event gallery upload (host).
-- Participant portal shows photos from events they attended; visibility controls.
-- **Demo:** upload event photos, participant sees them.
+### Phase 4 — Photos *(done ✅ — needs R2 env vars to activate)*
+- Cloudflare R2 storage (private bucket, presigned GET display, uploads proxied
+  through the app so no bucket CORS setup).
+- Host: per-event gallery — multi-file upload, hover-delete. Participant portal
+  shows photos under each attended event (PRIVATE ones never leave the host view).
+- Visibility enum exists (PUBLIC/PARTICIPANTS/PRIVATE, default PARTICIPANTS);
+  per-photo toggle UI is a later nicety.
+- **Demo:** upload event photos, participant sees them at /me.
 
 ### Phase 5 — Program / client tracker
 - Programs → Stages (configurable count per program).
