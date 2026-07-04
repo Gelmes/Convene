@@ -43,7 +43,14 @@ export async function r2Put(
     headers: { "Content-Type": contentType },
     body,
   });
-  if (!res.ok) throw new Error(`R2 upload failed: ${res.status}`);
+  if (!res.ok) {
+    const detail = (await res.text().catch(() => "")).slice(0, 300);
+    throw new Error(
+      `R2 rejected the upload (HTTP ${res.status}${
+        res.status === 403 ? " — credentials lack write permission?" : ""
+      })${detail ? `: ${detail}` : ""}`,
+    );
+  }
 }
 
 export async function r2Delete(key: string): Promise<void> {

@@ -52,7 +52,13 @@ export async function POST(
   const ext = file.name.includes(".") ? file.name.split(".").pop() : "bin";
   const storageKey = `${orgId}/${eventId}/${randomUUID()}.${ext}`;
 
-  await r2Put(storageKey, await file.arrayBuffer(), file.type);
+  try {
+    await r2Put(storageKey, await file.arrayBuffer(), file.type);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "storage upload failed";
+    console.error("photo upload:", message);
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
 
   try {
     const photo = await db.photos.create({
