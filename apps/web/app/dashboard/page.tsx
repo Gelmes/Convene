@@ -56,11 +56,19 @@ export default async function Dashboard() {
         <a href="/">
           <Brand />
         </a>
-        <form action={doSignOut}>
-          <Button variant="ghost" className="px-3 py-1.5 text-sm">
-            Sign out
-          </Button>
-        </form>
+        <span className="flex items-center gap-1">
+          <a
+            href="/me"
+            className="rounded-xl px-3 py-1.5 text-sm font-medium text-stone-500 transition-colors hover:bg-stone-900/5 hover:text-stone-900"
+          >
+            My participation
+          </a>
+          <form action={doSignOut}>
+            <Button variant="ghost" className="px-3 py-1.5 text-sm">
+              Sign out
+            </Button>
+          </form>
+        </span>
       </div>
 
       <div className="mt-10">

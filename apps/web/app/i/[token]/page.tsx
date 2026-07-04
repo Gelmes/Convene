@@ -6,7 +6,17 @@ import { formatDateTime } from "@/lib/format";
 import { Brand, Button, Card, Input, PageShell } from "@/components/ui";
 import { QuestionFields } from "@/components/question-fields";
 
-function Message({ title, body }: { title: string; body: string }) {
+function Message({
+  title,
+  body,
+  ctaHref,
+  ctaLabel,
+}: {
+  title: string;
+  body: string;
+  ctaHref?: string;
+  ctaLabel?: string;
+}) {
   return (
     <PageShell width="max-w-md">
       <div className="flex justify-center">
@@ -15,6 +25,14 @@ function Message({ title, body }: { title: string; body: string }) {
       <Card className="mt-10 p-8 text-center">
         <h1 className="text-xl font-semibold">{title}</h1>
         <p className="mt-2 text-sm text-stone-500">{body}</p>
+        {ctaHref && ctaLabel ? (
+          <a
+            href={ctaHref}
+            className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 font-medium text-white shadow-sm transition-all duration-150 hover:bg-emerald-500 hover:shadow-md"
+          >
+            {ctaLabel} <span aria-hidden>→</span>
+          </a>
+        ) : null}
       </Card>
     </PageShell>
   );
@@ -47,7 +65,9 @@ export default async function InviteClaim({
         title="All set — thank you!"
         body={`Your details are with ${invite.organizationName}.${
           invite.event ? ` See you at ${invite.event.title}.` : ""
-        }`}
+        } Want to see your readings and events? Sign in with the email you just confirmed.`}
+        ctaHref="/sign-in?to=me"
+        ctaLabel="See my data"
       />
     );
   }

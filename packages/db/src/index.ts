@@ -10,3 +10,4 @@ export {
   type PublicInvite,
   type PublicQuestion,
 } from "./public";
+export { getPortalData, type PortalParticipant } from "./portal";

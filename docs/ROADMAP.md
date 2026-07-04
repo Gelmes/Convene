@@ -34,10 +34,17 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
 - **Demo:** publish a form, attach to an event, register via the public link,
   view answers on the participant page.
 
-### Phase 3 — Participant portal
-- Participant accounts **claim** their org-owned record via invite/registration.
-- Portal: my BP readings over time, events I attended, my intake answers.
-- **Demo:** participant logs in and sees their own history.
+### Phase 3 — Participant portal *(done ✅)*
+- Claiming = **verified-email match**: magic-link sign-in proves email
+  ownership; unclaimed participant records with that email auto-link
+  (`Participant.userId`) on portal visit. Token-based claiming can harden this
+  later if needed.
+- `/me` portal grouped by organization: my events (+status), BP history, intake
+  answers. Portal reads of health data are audit-logged like host reads.
+- CTAs: invite-accepted and registration-done pages → "See my data" →
+  `/sign-in?to=me`; dashboard ↔ portal cross-links.
+- **Demo:** accept an invite (or register) with your email, sign in, see your
+  own history at `/me`.
 
 ### Phase 4 — Photos
 - Cloudflare R2 storage; per-event gallery upload (host).

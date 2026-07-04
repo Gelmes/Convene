@@ -48,8 +48,15 @@ export default async function PublicRegistration({
           <h1 className="mt-4 text-xl font-semibold">You&apos;re registered!</h1>
           <p className="mt-2 text-sm text-stone-500">
             See you at {event.title} — {formatDateTime(event.startsAt)}
-            {event.location ? `, ${event.location}` : ""}.
+            {event.location ? `, ${event.location}` : ""}. If you provided an
+            email, you can sign in with it anytime to see your data.
           </p>
+          <a
+            href="/sign-in?to=me"
+            className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 font-medium text-white shadow-sm transition-all duration-150 hover:bg-emerald-500 hover:shadow-md"
+          >
+            See my data <span aria-hidden>→</span>
+          </a>
         </Card>
       </PageShell>
     );

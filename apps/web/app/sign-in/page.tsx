@@ -5,9 +5,11 @@ import { Brand, Button, Card, Input, PageShell } from "@/components/ui";
 export default async function SignIn({
   searchParams,
 }: {
-  searchParams: Promise<{ check?: string; error?: string }>;
+  searchParams: Promise<{ check?: string; error?: string; to?: string }>;
 }) {
   const sp = await searchParams;
+  // Only allow known internal destinations — never a raw user-supplied URL.
+  const redirectTo = sp.to === "me" ? "/me" : "/dashboard";
 
   async function sendLink(formData: FormData) {
     "use server";
@@ -15,7 +17,7 @@ export default async function SignIn({
     if (!parsed.success) return;
     await signIn("resend", {
       email: parsed.data.email,
-      redirectTo: "/dashboard",
+      redirectTo,
     });
   }
 
