@@ -180,6 +180,14 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
           });
         });
       },
+      /** Most recent event registration for a participant (invites attach to it). */
+      latestForParticipant(participantId: string) {
+        return prisma.eventRegistration.findFirst({
+          where: { organizationId, participantId },
+          orderBy: { createdAt: "desc" },
+          include: { event: { select: { id: true, title: true } } },
+        });
+      },
       setStatus(registrationId: string, status: "REGISTERED" | "CHECKED_IN" | "ATTENDED" | "NO_SHOW") {
         return prisma.eventRegistration.updateMany({
           where: { id: registrationId, organizationId },
@@ -295,6 +303,58 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
           where: { organizationId, participantId },
           orderBy: { createdAt: "desc" },
           include: { formTemplate: { select: { name: true } } },
+        });
+      },
+    },
+
+    // --- Invites (personal claim links) ---------------------------------------
+    invites: {
+      /** Latest usable invite for a participant, if any. */
+      getActiveForParticipant(participantId: string) {
+        return prisma.invite.findFirst({
+          where: {
+            organizationId,
+            participantId,
+            kind: "PARTICIPANT_CLAIM",
+            acceptedAt: null,
+            expiresAt: { gt: new Date() },
+          },
+          orderBy: { createdAt: "desc" },
+        });
+      },
+      async create(input: { participantId: string; eventId?: string }) {
+        const participant = await prisma.participant.findFirst({
+          where: { id: input.participantId, organizationId },
+          select: { id: true, email: true },
+        });
+        if (!participant) throw new Error("Participant not found in this organization");
+
+        const invite = await prisma.invite.create({
+          data: {
+            organizationId,
+            participantId: input.participantId,
+            eventId: input.eventId ?? null,
+            email: participant.email,
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+          },
+        });
+
+        await recordAudit({
+          organizationId,
+          actorUserId,
+          action: "invite.create",
+          entityType: "Invite",
+          entityId: invite.id,
+          metadata: { participantId: input.participantId, eventId: input.eventId ?? null },
+        });
+
+        return invite;
+      },
+      /** Record where the invite was emailed. */
+      markEmailed(inviteId: string, email: string) {
+        return prisma.invite.updateMany({
+          where: { id: inviteId, organizationId },
+          data: { email },
         });
       },
     },

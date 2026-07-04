@@ -27,9 +27,10 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
   form per event, public **self-registration** page (`/r/[eventId]`) with intake,
   participant detail page (BP history + intake answers), host fill (re-filing
   records a new submission — history preserved).
-- **2b (next):** **Invite links** — "add participant + send link" to
-  claim/complete intake; needs Resend wired for email delivery (link is
-  copyable without it).
+- **2b (done ✅):** **Invite links** — personal tokenized `/i/[token]` links per
+  participant (30-day expiry, single-use, audit-logged). Copyable always;
+  emailed via Resend when `RESEND_API_KEY` is set. Invitee confirms contact
+  info + fills the event's intake form.
 - **Demo:** publish a form, attach to an event, register via the public link,
   view answers on the participant page.
 

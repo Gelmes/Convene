@@ -77,6 +77,13 @@ export const publicRegistrationSchema = z.object({
 });
 export type PublicRegistrationInput = z.infer<typeof publicRegistrationSchema>;
 
+export const acceptInviteSchema = z.object({
+  email: emailSchema.optional(),
+  phone: z.string().max(30).optional(),
+  answers: formAnswersSchema.optional(),
+});
+export type AcceptInviteInput = z.infer<typeof acceptInviteSchema>;
+
 // --- Offline sync (Phase 1b) -------------------------------------------------
 // Ops are created on the device with client-generated UUIDs so the server can
 // apply them idempotently — a retried batch never duplicates data.

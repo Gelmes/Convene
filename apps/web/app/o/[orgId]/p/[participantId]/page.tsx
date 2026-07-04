@@ -1,11 +1,13 @@
-import { createTenantClient } from "@convene/db";
+import { createTenantClient, prisma } from "@convene/db";
 import { formAnswersSchema } from "@convene/schemas";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { buildAnswers, parseQuestions } from "@/lib/forms";
+import { sendInviteEmail } from "@/lib/mailer";
 import { requireMembership } from "@/lib/session";
 import { formatDateTime } from "@/lib/format";
 import { BackLink, Badge, Button, Card, PageShell } from "@/components/ui";
+import { CopyField } from "@/components/copy-field";
 import { QuestionFields } from "@/components/question-fields";
 
 export default async function ParticipantDetail({
@@ -20,11 +22,19 @@ export default async function ParticipantDetail({
   const participant = await db.participants.get(participantId);
   if (!participant) redirect(`/o/${orgId}`);
 
-  const [submissions, readings, publishedForms] = await Promise.all([
-    db.submissions.listForParticipant(participantId),
-    db.healthReadings.listForParticipant(participantId),
-    db.forms.listPublished(),
-  ]);
+  const [submissions, readings, publishedForms, activeInvite, latestReg, org] =
+    await Promise.all([
+      db.submissions.listForParticipant(participantId),
+      db.healthReadings.listForParticipant(participantId),
+      db.forms.listPublished(),
+      db.invites.getActiveForParticipant(participantId),
+      db.registrations.latestForParticipant(participantId),
+      prisma.organization.findUnique({ where: { id: orgId }, select: { name: true } }),
+    ]);
+
+  const origin = (process.env.AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const inviteUrl = activeInvite ? `${origin}/i/${activeInvite.token}` : null;
+  const emailEnabled = Boolean(process.env.RESEND_API_KEY);
 
   async function hostFill(formData: FormData) {
     "use server";
@@ -47,6 +57,41 @@ export default async function ParticipantDetail({
     revalidatePath(`/o/${orgId}/p/${participantId}`);
   }
 
+  async function createInvite() {
+    "use server";
+    const { userId } = await requireMembership(orgId);
+    const db = createTenantClient(orgId, userId);
+    const latestReg = await db.registrations.latestForParticipant(participantId);
+    await db.invites.create({
+      participantId,
+      eventId: latestReg?.eventId,
+    });
+    revalidatePath(`/o/${orgId}/p/${participantId}`);
+  }
+
+  async function emailInvite() {
+    "use server";
+    const { userId } = await requireMembership(orgId);
+    const db = createTenantClient(orgId, userId);
+    const [invite, p, org, latestReg] = await Promise.all([
+      db.invites.getActiveForParticipant(participantId),
+      db.participants.get(participantId),
+      prisma.organization.findUnique({ where: { id: orgId }, select: { name: true } }),
+      db.registrations.latestForParticipant(participantId),
+    ]);
+    if (!invite || !p?.email) return;
+
+    const origin = (process.env.AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
+    const sent = await sendInviteEmail({
+      to: p.email,
+      orgName: org?.name ?? "Your host",
+      eventTitle: latestReg?.event.title,
+      url: `${origin}/i/${invite.token}`,
+    });
+    if (sent) await db.invites.markEmailed(invite.id, p.email);
+    revalidatePath(`/o/${orgId}/p/${participantId}`);
+  }
+
   return (
     <PageShell>
       <BackLink href={`/o/${orgId}`}>Events</BackLink>
@@ -57,6 +102,49 @@ export default async function ParticipantDetail({
         {[participant.email, participant.phone].filter(Boolean).join(" · ") ||
           "No contact info"}
       </p>
+
+      {/* --- Personal invite link --- */}
+      <Card className="mt-6 p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="font-medium">Invite link</h3>
+          {activeInvite?.email ? <Badge>Emailed</Badge> : null}
+        </div>
+        <p className="mt-1 text-xs text-stone-400">
+          A personal link for {participant.firstName} to confirm their contact
+          info and fill their intake
+          {latestReg ? ` for ${latestReg.event.title}` : ""}. Expires 30 days
+          after creation, single use.
+        </p>
+        {inviteUrl ? (
+          <div className="mt-3 space-y-2">
+            <CopyField value={inviteUrl} />
+            <div className="flex items-center justify-between gap-3">
+              <form action={emailInvite}>
+                <Button
+                  variant="ghost"
+                  className="px-3 py-1.5 text-sm"
+                  disabled={!emailEnabled || !participant.email}
+                >
+                  {participant.email
+                    ? emailEnabled
+                      ? `Email to ${participant.email}`
+                      : "Email (needs RESEND_API_KEY)"
+                    : "Email (no address on file)"}
+                </Button>
+              </form>
+              <form action={createInvite}>
+                <Button variant="ghost" className="px-3 py-1.5 text-sm">
+                  New link
+                </Button>
+              </form>
+            </div>
+          </div>
+        ) : (
+          <form action={createInvite} className="mt-3">
+            <Button className="w-full">Create invite link</Button>
+          </form>
+        )}
+      </Card>
 
       {/* --- Blood pressure history --- */}
       <h2 className="mt-8 text-lg font-semibold">
