@@ -38,9 +38,17 @@ export async function r2Put(
   body: ArrayBuffer,
   contentType: string,
 ): Promise<void> {
-  const res = await client().fetch(objectUrl(key), {
+  // Sign first, then dispatch with the raw buffer: passing a Request object to
+  // fetch turns the body into a stream, which Node sends chunked WITHOUT a
+  // Content-Length header — R2 rejects that with 411 MissingContentLength.
+  const signed = await client().sign(objectUrl(key), {
     method: "PUT",
     headers: { "Content-Type": contentType },
+    body,
+  });
+  const res = await fetch(signed.url, {
+    method: "PUT",
+    headers: signed.headers,
     body,
   });
   if (!res.ok) {
