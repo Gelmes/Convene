@@ -24,6 +24,7 @@ export default async function EventDetail({
   const roster = await db.registrations.listForEvent(eventId);
   const readings = await db.healthReadings.listForEvent(eventId);
   const publishedForms = await db.forms.listPublished();
+  const allStages = await db.programs.listAllStages();
 
   const origin = process.env.AUTH_URL ?? "http://localhost:3000";
   const publicUrl = `${origin.replace(/\/$/, "")}/r/${eventId}`;
@@ -85,6 +86,15 @@ export default async function EventDetail({
     const db = createTenantClient(orgId, userId);
     const formId = String(formData.get("formTemplateId") ?? "");
     await db.events.setIntakeForm(eventId, formId || null);
+    revalidatePath(`/o/${orgId}/e/${eventId}`);
+  }
+
+  async function setStage(formData: FormData) {
+    "use server";
+    const { userId } = await requireMembership(orgId);
+    const db = createTenantClient(orgId, userId);
+    const stageId = String(formData.get("stageId") ?? "");
+    await db.events.setStage(eventId, stageId || null);
     revalidatePath(`/o/${orgId}/e/${eventId}`);
   }
 
@@ -204,6 +214,30 @@ export default async function EventDetail({
             </p>
           ) : null}
         </div>
+
+        {allStages.length > 0 ? (
+          <div className="mt-5 border-t border-stone-100 pt-4">
+            <h4 className="text-sm font-medium text-stone-700">Program stage</h4>
+            <p className="mt-0.5 text-xs text-stone-400">
+              Attending this event marks that stage&apos;s requirement as met.
+            </p>
+            <form action={setStage} className="mt-2 flex gap-2">
+              <select
+                name="stageId"
+                defaultValue={event.stageId ?? ""}
+                className="flex-1 rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-sm text-stone-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              >
+                <option value="">Not linked to a stage</option>
+                {allStages.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.program.name} — {s.name}
+                  </option>
+                ))}
+              </select>
+              <Button className="shrink-0">Save</Button>
+            </form>
+          </div>
+        ) : null}
       </Card>
     </PageShell>
   );

@@ -38,12 +38,20 @@ export default async function OrgHome({
         <h1 className="min-w-0 truncate text-2xl font-bold tracking-tight">
           {org?.name}
         </h1>
-        <a
-          href={`/o/${orgId}/forms`}
-          className="shrink-0 rounded-xl px-3 py-1.5 text-sm font-medium text-stone-500 transition-colors hover:bg-stone-900/5 hover:text-stone-900"
-        >
-          Intake forms →
-        </a>
+        <span className="flex shrink-0 items-center gap-1">
+          <a
+            href={`/o/${orgId}/programs`}
+            className="rounded-xl px-3 py-1.5 text-sm font-medium text-stone-500 transition-colors hover:bg-stone-900/5 hover:text-stone-900"
+          >
+            Programs
+          </a>
+          <a
+            href={`/o/${orgId}/forms`}
+            className="rounded-xl px-3 py-1.5 text-sm font-medium text-stone-500 transition-colors hover:bg-stone-900/5 hover:text-stone-900"
+          >
+            Intake forms
+          </a>
+        </span>
       </div>
 
       <h2 className="mt-8 text-lg font-semibold">Events</h2>

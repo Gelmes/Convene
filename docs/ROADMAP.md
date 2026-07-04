@@ -55,11 +55,17 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
   per-photo toggle UI is a later nicety.
 - **Demo:** upload event photos, participant sees them at /me.
 
-### Phase 5 — Program / client tracker
-- Programs → Stages (configurable count per program).
-- Enroll participants; track StageProgress; optionally link events to stages.
-- Host dashboard: "who is at which stage across which program."
-- **Demo:** define a 3-stage program, move a participant through it.
+### Phase 5 — Program / client tracker  ✅ done
+- Programs → ordered Stages (add/reorder/remove; per-stage required form).
+- Events link to a stage; attendance (check-in **or a BP reading at the event**)
+  + form submission satisfy requirements → **"Ready ✓"** flag; host confirms
+  advance (linear with override: move anyone to any stage, pause/drop/resume).
+- Roster view with stage badges + per-stage progress dots; enroll from org
+  participants; StageCompletion history.
+- **Demo:** 3-stage program, link an event, take a BP there, watch Ready ✓,
+  advance to completion 🎉.
+- *Later polish:* explicit check-in button on the event roster; program
+  progress on the participant portal (`/me`); kanban board view.
 
 ### Phase 6 — Billing seam activated
 - Stripe subscriptions; Plans with limits; enforce limits from the plan.

@@ -77,6 +77,19 @@ export const publicRegistrationSchema = z.object({
 });
 export type PublicRegistrationInput = z.infer<typeof publicRegistrationSchema>;
 
+// --- Program tracker (Phase 5) ------------------------------------------------
+
+export const createProgramSchema = z.object({
+  name: z.string().min(2, "Name is too short").max(120),
+  description: z.string().max(500).optional(),
+});
+export type CreateProgramInput = z.infer<typeof createProgramSchema>;
+
+export const createStageSchema = z.object({
+  name: z.string().min(1, "Stage name is required").max(120),
+});
+export type CreateStageInput = z.infer<typeof createStageSchema>;
+
 export const acceptInviteSchema = z.object({
   email: emailSchema.optional(),
   phone: z.string().max(30).optional(),

@@ -29,11 +29,15 @@ model Organization {
   events          Event[]
   registrations   EventRegistration[]
   healthReadings  HealthReading[]
-  formTemplates   FormTemplate[]
-  formSubmissions FormSubmission[]
-  invites         Invite[]
-  photos          Photo[]
-  auditLogs       AuditLog[]
+  formTemplates    FormTemplate[]
+  formSubmissions  FormSubmission[]
+  invites          Invite[]
+  photos           Photo[]
+  programs         Program[]
+  stages           Stage[]
+  enrollments      ProgramEnrollment[]
+  stageCompletions StageCompletion[]
+  auditLogs        AuditLog[]
 }
 
 model User {
@@ -91,6 +95,7 @@ model Participant {
   healthReadings  HealthReading[]
   formSubmissions FormSubmission[]
   invites         Invite[]
+  enrollments     ProgramEnrollment[]
 
   @@index([organizationId])
 }
@@ -110,11 +115,13 @@ model Event {
   status               EventStatus @default(UPCOMING)
   publicRegistration   Boolean     @default(false)
   intakeFormTemplateId String?
+  stageId              String? // attending this event satisfies that stage's event requirement
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
 
   organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   intakeForm      FormTemplate?       @relation("EventIntakeForm", fields: [intakeFormTemplateId], references: [id], onDelete: SetNull)
+  stage           Stage?              @relation(fields: [stageId], references: [id], onDelete: SetNull)
   registrations   EventRegistration[]
   healthReadings  HealthReading[]
   formSubmissions FormSubmission[]
@@ -197,11 +204,101 @@ model FormTemplate {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
-  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  submissions  FormSubmission[]
-  intakeEvents Event[]          @relation("EventIntakeForm")
+  organization      Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  submissions       FormSubmission[]
+  intakeEvents      Event[]          @relation("EventIntakeForm")
+  requiredForStages Stage[]
 
   @@index([organizationId])
+}
+
+// ---------------------------------------------------------------------------
+// Program / client tracker (Phase 5)
+// Linear stages with host override; requirements (linked events / a form)
+// surface a "ready to advance" suggestion — the host confirms.
+// ---------------------------------------------------------------------------
+
+model Program {
+  id             String        @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  status         ProgramStatus @default(ACTIVE)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  stages       Stage[]
+  enrollments  ProgramEnrollment[]
+
+  @@index([organizationId])
+}
+
+model Stage {
+  id                     String  @id @default(cuid())
+  organizationId         String
+  programId              String
+  name                   String
+  order                  Int
+  requiredFormTemplateId String? // optional: a form submission required to complete this stage
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  program      Program             @relation(fields: [programId], references: [id], onDelete: Cascade)
+  requiredForm FormTemplate?       @relation(fields: [requiredFormTemplateId], references: [id], onDelete: SetNull)
+  events       Event[] // attending any linked event satisfies the event requirement
+  currentFor   ProgramEnrollment[]
+  completions  StageCompletion[]
+
+  @@index([organizationId])
+  @@index([programId])
+}
+
+model ProgramEnrollment {
+  id             String           @id @default(cuid())
+  organizationId String
+  programId      String
+  participantId  String
+  currentStageId String?
+  status         EnrollmentStatus @default(ACTIVE)
+  enrolledAt     DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  program      Program           @relation(fields: [programId], references: [id], onDelete: Cascade)
+  participant  Participant       @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  currentStage Stage?            @relation(fields: [currentStageId], references: [id], onDelete: SetNull)
+  completions  StageCompletion[]
+
+  @@unique([programId, participantId])
+  @@index([organizationId])
+  @@index([participantId])
+}
+
+model StageCompletion {
+  id             String   @id @default(cuid())
+  organizationId String
+  enrollmentId   String
+  stageId        String
+  completedAt    DateTime @default(now())
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  enrollment   ProgramEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  stage        Stage             @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, stageId])
+  @@index([organizationId])
+}
+
+enum ProgramStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+  DROPPED
 }
 
 model FormSubmission {

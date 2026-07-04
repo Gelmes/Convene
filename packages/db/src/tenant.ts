@@ -85,6 +85,20 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
           data: { publicRegistration: enabled },
         });
       },
+      /** Link this event to a program stage (attending it satisfies the stage). */
+      async setStage(eventId: string, stageId: string | null) {
+        if (stageId) {
+          const stage = await prisma.stage.findFirst({
+            where: { id: stageId, organizationId },
+            select: { id: true },
+          });
+          if (!stage) throw new Error("Stage not found in this organization");
+        }
+        return prisma.event.updateMany({
+          where: { id: eventId, organizationId },
+          data: { stageId },
+        });
+      },
       create(data: {
         title: string;
         description?: string;
@@ -400,6 +414,294 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
         if (!photo) return null;
         await prisma.photo.delete({ where: { id: photo.id } });
         return photo;
+      },
+    },
+
+    // --- Program / client tracker ----------------------------------------------
+    programs: {
+      list() {
+        return prisma.program.findMany({
+          where: { organizationId },
+          orderBy: { createdAt: "desc" },
+          include: {
+            _count: { select: { stages: true, enrollments: true } },
+          },
+        });
+      },
+      get(id: string) {
+        return prisma.program.findFirst({
+          where: { id, organizationId },
+          include: {
+            stages: {
+              orderBy: { order: "asc" },
+              include: {
+                requiredForm: { select: { id: true, name: true } },
+                _count: { select: { events: true } },
+              },
+            },
+          },
+        });
+      },
+      create(data: { name: string; description?: string }) {
+        return prisma.program.create({
+          data: {
+            organizationId,
+            name: data.name,
+            description: data.description ?? null,
+          },
+        });
+      },
+      /** Every stage in the org with its program name (for link pickers). */
+      listAllStages() {
+        return prisma.stage.findMany({
+          where: { organizationId },
+          orderBy: [{ programId: "asc" }, { order: "asc" }],
+          include: { program: { select: { name: true } } },
+        });
+      },
+      async addStage(programId: string, name: string) {
+        const program = await prisma.program.findFirst({
+          where: { id: programId, organizationId },
+          select: { id: true },
+        });
+        if (!program) throw new Error("Program not found in this organization");
+        const last = await prisma.stage.findFirst({
+          where: { programId },
+          orderBy: { order: "desc" },
+          select: { order: true },
+        });
+        return prisma.stage.create({
+          data: {
+            organizationId,
+            programId,
+            name,
+            order: (last?.order ?? 0) + 1,
+          },
+        });
+      },
+      removeStage(stageId: string) {
+        return prisma.stage.deleteMany({ where: { id: stageId, organizationId } });
+      },
+      /** Swap a stage with its neighbor (direction -1 = up, +1 = down). */
+      async moveStage(stageId: string, direction: -1 | 1) {
+        const stage = await prisma.stage.findFirst({
+          where: { id: stageId, organizationId },
+          select: { id: true, programId: true, order: true },
+        });
+        if (!stage) return;
+        const neighbor = await prisma.stage.findFirst({
+          where: {
+            programId: stage.programId,
+            order: direction === -1 ? { lt: stage.order } : { gt: stage.order },
+          },
+          orderBy: { order: direction === -1 ? "desc" : "asc" },
+          select: { id: true, order: true },
+        });
+        if (!neighbor) return;
+        await prisma.$transaction([
+          prisma.stage.update({
+            where: { id: stage.id },
+            data: { order: neighbor.order },
+          }),
+          prisma.stage.update({
+            where: { id: neighbor.id },
+            data: { order: stage.order },
+          }),
+        ]);
+      },
+      async setStageRequiredForm(stageId: string, formTemplateId: string | null) {
+        if (formTemplateId) {
+          const form = await prisma.formTemplate.findFirst({
+            where: { id: formTemplateId, organizationId },
+            select: { id: true },
+          });
+          if (!form) throw new Error("Form not found in this organization");
+        }
+        return prisma.stage.updateMany({
+          where: { id: stageId, organizationId },
+          data: { requiredFormTemplateId: formTemplateId },
+        });
+      },
+    },
+
+    enrollments: {
+      /**
+       * Program roster with per-enrollment readiness: an enrollment is "ready"
+       * when its current stage HAS requirements (linked events / a form) and
+       * all of them are satisfied. No requirements → host judgment, no flag.
+       */
+      async listForProgram(programId: string) {
+        const enrollments = await prisma.programEnrollment.findMany({
+          where: { organizationId, programId },
+          orderBy: { enrolledAt: "asc" },
+          include: {
+            participant: {
+              select: { id: true, firstName: true, lastName: true },
+            },
+            currentStage: {
+              include: {
+                events: { select: { id: true } },
+                requiredForm: { select: { id: true, name: true } },
+              },
+            },
+            completions: { select: { stageId: true } },
+          },
+        });
+
+        return Promise.all(
+          enrollments.map(async (e) => {
+            let ready = false;
+            const stage = e.currentStage;
+            if (e.status === "ACTIVE" && stage) {
+              const needsEvent = stage.events.length > 0;
+              const needsForm = Boolean(stage.requiredFormTemplateId);
+              if (needsEvent || needsForm) {
+                const stageEventIds = stage.events.map((ev) => ev.id);
+                const [attended, submitted] = await Promise.all([
+                  needsEvent
+                    ? // Attendance = checked-in/attended registration, OR a BP
+                      // reading captured at the event (being measured there is
+                      // proof of presence — no separate check-in step needed).
+                      Promise.all([
+                        prisma.eventRegistration.findFirst({
+                          where: {
+                            organizationId,
+                            participantId: e.participantId,
+                            eventId: { in: stageEventIds },
+                            status: { in: ["CHECKED_IN", "ATTENDED"] },
+                          },
+                          select: { id: true },
+                        }),
+                        prisma.healthReading.findFirst({
+                          where: {
+                            organizationId,
+                            participantId: e.participantId,
+                            eventId: { in: stageEventIds },
+                          },
+                          select: { id: true },
+                        }),
+                      ]).then(([reg, reading]) => reg ?? reading)
+                    : Promise.resolve(true),
+                  needsForm
+                    ? prisma.formSubmission.findFirst({
+                        where: {
+                          organizationId,
+                          participantId: e.participantId,
+                          formTemplateId: stage.requiredFormTemplateId!,
+                        },
+                        select: { id: true },
+                      })
+                    : Promise.resolve(true),
+                ]);
+                ready = Boolean(attended) && Boolean(submitted);
+              }
+            }
+            return { ...e, ready };
+          }),
+        );
+      },
+
+      async enroll(programId: string, participantId: string) {
+        const [program, participant, firstStage] = await Promise.all([
+          prisma.program.findFirst({
+            where: { id: programId, organizationId },
+            select: { id: true },
+          }),
+          prisma.participant.findFirst({
+            where: { id: participantId, organizationId },
+            select: { id: true },
+          }),
+          prisma.stage.findFirst({
+            where: { programId, organizationId },
+            orderBy: { order: "asc" },
+            select: { id: true },
+          }),
+        ]);
+        if (!program) throw new Error("Program not found in this organization");
+        if (!participant) throw new Error("Participant not found in this organization");
+
+        return prisma.programEnrollment.upsert({
+          where: { programId_participantId: { programId, participantId } },
+          create: {
+            organizationId,
+            programId,
+            participantId,
+            currentStageId: firstStage?.id ?? null,
+          },
+          update: {}, // enrolling twice is a no-op
+        });
+      },
+
+      /** Complete the current stage and move to the next (or finish the program). */
+      async advance(enrollmentId: string) {
+        const enrollment = await prisma.programEnrollment.findFirst({
+          where: { id: enrollmentId, organizationId },
+          include: { currentStage: { select: { id: true, programId: true, order: true } } },
+        });
+        if (!enrollment?.currentStage) return;
+
+        const next = await prisma.stage.findFirst({
+          where: {
+            programId: enrollment.currentStage.programId,
+            order: { gt: enrollment.currentStage.order },
+          },
+          orderBy: { order: "asc" },
+          select: { id: true },
+        });
+
+        await prisma.$transaction([
+          prisma.stageCompletion.upsert({
+            where: {
+              enrollmentId_stageId: {
+                enrollmentId,
+                stageId: enrollment.currentStage.id,
+              },
+            },
+            create: {
+              organizationId,
+              enrollmentId,
+              stageId: enrollment.currentStage.id,
+            },
+            update: {},
+          }),
+          prisma.programEnrollment.update({
+            where: { id: enrollmentId },
+            data: next
+              ? { currentStageId: next.id }
+              : { currentStageId: null, status: "COMPLETED" },
+          }),
+        ]);
+      },
+
+      /** Host override: place the enrollment at any stage. */
+      async moveTo(enrollmentId: string, stageId: string) {
+        const [enrollment, stage] = await Promise.all([
+          prisma.programEnrollment.findFirst({
+            where: { id: enrollmentId, organizationId },
+            select: { id: true, programId: true },
+          }),
+          prisma.stage.findFirst({
+            where: { id: stageId, organizationId },
+            select: { id: true, programId: true },
+          }),
+        ]);
+        if (!enrollment || !stage || enrollment.programId !== stage.programId) {
+          throw new Error("Stage not in this enrollment's program");
+        }
+        return prisma.programEnrollment.update({
+          where: { id: enrollmentId },
+          data: { currentStageId: stageId, status: "ACTIVE" },
+        });
+      },
+
+      setStatus(
+        enrollmentId: string,
+        status: "ACTIVE" | "COMPLETED" | "PAUSED" | "DROPPED",
+      ) {
+        return prisma.programEnrollment.updateMany({
+          where: { id: enrollmentId, organizationId },
+          data: { status },
+        });
       },
     },
 
