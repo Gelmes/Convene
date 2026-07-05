@@ -216,6 +216,7 @@ export default async function EventDetail({
           <form action={setIntakeForm} className="mt-2 flex gap-2">
             <select
               name="formTemplateId"
+              key={event.intakeForm?.id ?? "none"}
               defaultValue={event.intakeForm?.id ?? ""}
               className="flex-1 rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-sm text-stone-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             >
@@ -248,6 +249,7 @@ export default async function EventDetail({
             <form action={setStage} className="mt-2 flex gap-2">
               <select
                 name="stageId"
+                key={event.stageId ?? "none"}
                 defaultValue={event.stageId ?? ""}
                 className="flex-1 rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-sm text-stone-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
               >
@@ -268,7 +270,7 @@ export default async function EventDetail({
       <Card className="mt-8 border-red-100 p-5">
         <h3 className="font-medium">Manage event</h3>
         <form action={renameEvent} className="mt-3 flex gap-2">
-          <Input name="name" defaultValue={event.title} required />
+          <Input name="name" key={event.title} defaultValue={event.title} required />
           <Button className="shrink-0">Rename</Button>
         </form>
         <form action={deleteEvent} className="mt-3 border-t border-stone-100 pt-3">

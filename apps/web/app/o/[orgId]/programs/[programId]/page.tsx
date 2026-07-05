@@ -232,6 +232,7 @@ export default async function ProgramDetail({
                     <input type="hidden" name="stageId" value={s.id} />
                     <select
                       name="formTemplateId"
+                      key={s.requiredForm?.id ?? "none"}
                       defaultValue={s.requiredForm?.id ?? ""}
                       className={selectCls}
                     >
@@ -276,6 +277,7 @@ export default async function ProgramDetail({
           <form action={setAdvanceMode} className="flex items-center gap-1.5">
             <select
               name="advanceMode"
+              key={program.advanceMode}
               defaultValue={program.advanceMode}
               className={selectCls}
             >
@@ -463,7 +465,7 @@ export default async function ProgramDetail({
       <Card className="mt-10 border-red-100 p-5">
         <h3 className="font-medium">Manage program</h3>
         <form action={renameProgram} className="mt-3 flex gap-2">
-          <Input name="name" defaultValue={program.name} required />
+          <Input name="name" key={program.name} defaultValue={program.name} required />
           <Button className="shrink-0">Rename</Button>
         </form>
         <form action={deleteProgram} className="mt-3 border-t border-stone-100 pt-3">

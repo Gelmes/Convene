@@ -154,7 +154,7 @@ export default async function OrgHome({
         <Card className="mt-10 border-red-100 p-5">
           <h3 className="font-medium">Manage organization</h3>
           <form action={renameOrg} className="mt-3 flex gap-2">
-            <Input name="name" defaultValue={org?.name ?? ""} required />
+            <Input name="name" key={org?.name} defaultValue={org?.name ?? ""} required />
             <Button className="shrink-0">Rename</Button>
           </form>
           {role === "OWNER" && org ? (

@@ -222,7 +222,7 @@ export default async function FormBuilder({
       <Card className="mt-10 border-red-100 p-5">
         <h3 className="font-medium">Manage form</h3>
         <form action={renameForm} className="mt-3 flex gap-2">
-          <Input name="name" defaultValue={form.name} required />
+          <Input name="name" key={form.name} defaultValue={form.name} required />
           <Button className="shrink-0">Rename</Button>
         </form>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-stone-100 pt-3">
