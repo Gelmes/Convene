@@ -7,6 +7,7 @@ import { formatDateTime } from "@/lib/format";
 import { r2Configured, r2Delete, r2PresignGet } from "@/lib/r2";
 import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm";
+import { SaveButton } from "@/components/save-button";
 import { CopyField } from "@/components/copy-field";
 import { FieldCapture, type RosterEntry } from "@/components/field-capture";
 import { PhotoUploader } from "@/components/photo-uploader";
@@ -227,7 +228,7 @@ export default async function EventDetail({
                 </option>
               ))}
             </select>
-            <Button className="shrink-0">Save</Button>
+            <SaveButton className="shrink-0">Save</SaveButton>
           </form>
           {publishedForms.length === 0 ? (
             <p className="mt-2 text-xs text-stone-400">
@@ -260,7 +261,7 @@ export default async function EventDetail({
                   </option>
                 ))}
               </select>
-              <Button className="shrink-0">Save</Button>
+              <SaveButton className="shrink-0">Save</SaveButton>
             </form>
           </div>
         ) : null}
@@ -271,7 +272,7 @@ export default async function EventDetail({
         <h3 className="font-medium">Manage event</h3>
         <form action={renameEvent} className="mt-3 flex gap-2">
           <Input name="name" key={event.title} defaultValue={event.title} required />
-          <Button className="shrink-0">Rename</Button>
+          <SaveButton className="shrink-0" savedLabel="Renamed ✓">Rename</SaveButton>
         </form>
         <form action={deleteEvent} className="mt-3 border-t border-stone-100 pt-3">
           <ConfirmButton

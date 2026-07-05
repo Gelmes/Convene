@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireMembership } from "@/lib/session";
 import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm";
+import { SaveButton } from "@/components/save-button";
 
 const selectCls =
   "rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm text-stone-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20";
@@ -243,9 +244,9 @@ export default async function ProgramDetail({
                         </option>
                       ))}
                     </select>
-                    <Button variant="ghost" className="px-2.5 py-1.5 text-xs">
+                    <SaveButton variant="ghost" className="px-2.5 py-1.5 text-xs">
                       Save
-                    </Button>
+                    </SaveButton>
                   </form>
                 </div>
               </Card>
@@ -284,9 +285,9 @@ export default async function ProgramDetail({
               <option value="MANUAL">Manual — I confirm</option>
               <option value="AUTO">Automatic</option>
             </select>
-            <Button variant="ghost" className="px-2.5 py-1.5 text-xs">
+            <SaveButton variant="ghost" className="px-2.5 py-1.5 text-xs">
               Save
-            </Button>
+            </SaveButton>
           </form>
         </div>
       </Card>
@@ -466,7 +467,7 @@ export default async function ProgramDetail({
         <h3 className="font-medium">Manage program</h3>
         <form action={renameProgram} className="mt-3 flex gap-2">
           <Input name="name" key={program.name} defaultValue={program.name} required />
-          <Button className="shrink-0">Rename</Button>
+          <SaveButton className="shrink-0" savedLabel="Renamed ✓">Rename</SaveButton>
         </form>
         <form action={deleteProgram} className="mt-3 border-t border-stone-100 pt-3">
           <ConfirmButton

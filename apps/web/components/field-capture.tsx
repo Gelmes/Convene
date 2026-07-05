@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
-import { checkinOpSchema, participantOpSchema, readingOpSchema } from "@convene/schemas";
+import {
+  checkinOpSchema,
+  participantOpSchema,
+  readingOpSchema,
+  type SyncOp,
+} from "@convene/schemas";
 import { enqueueOp, flushOutbox, outboxDb } from "@/lib/outbox";
 import { Button, Card, Input } from "@/components/ui";
 
@@ -37,6 +42,12 @@ export function FieldCapture({
   const router = useRouter();
   const [online, setOnline] = useState(true);
   const flushing = useRef(false);
+
+  // Session-local copy of every op made on this page. The outbox row is
+  // deleted the moment the server confirms it — BEFORE the refreshed server
+  // data arrives — so overlays driven only by the outbox would blink off for a
+  // moment. These stick around; the server data converges to the same values.
+  const [applied, setApplied] = useState<SyncOp[]>([]);
 
   // Pending ops for this org (live view over IndexedDB).
   const pendingRows = useLiveQuery(
@@ -74,8 +85,16 @@ export function FieldCapture({
     };
   }, [flush]);
 
-  // ---- Merge server state with unsynced local ops -------------------------
-  const eventOps = pending.filter((r) => r.eventId === eventId).map((r) => r.op);
+  // ---- Merge server state with local ops -----------------------------------
+  // pendingEventOps: still unsynced (drives the "syncing" indicator).
+  // overlayOps: pending + already-applied (drives data overlays, gap-free).
+  const pendingEventOps = pending
+    .filter((r) => r.eventId === eventId)
+    .map((r) => r.op);
+  const eventOps = [
+    ...pendingEventOps,
+    ...applied.filter((op) => op.eventId === eventId),
+  ];
 
   const mergedRoster: RosterEntry[] = [...roster];
   for (const op of eventOps) {
@@ -129,6 +148,7 @@ export function FieldCapture({
       lastName: (data.get("lastName") as string) || undefined,
     });
     if (!parsed.success) return;
+    setApplied((a) => [...a, parsed.data]);
     await enqueueOp(orgId, parsed.data);
     form.reset();
     void flush();
@@ -142,6 +162,7 @@ export function FieldCapture({
       participantId,
     });
     if (!parsed.success) return;
+    setApplied((a) => [...a, parsed.data]);
     await enqueueOp(orgId, parsed.data);
     void flush();
   }
@@ -160,6 +181,7 @@ export function FieldCapture({
       takenAt: new Date(),
     });
     if (!parsed.success) return;
+    setApplied((a) => [...a, parsed.data]);
     await enqueueOp(orgId, parsed.data);
     form.reset();
     form.closest("details")?.removeAttribute("open");
@@ -212,7 +234,7 @@ export function FieldCapture({
         ) : (
           mergedRoster.map((p) => {
             const last = latestByParticipant.get(p.participantId);
-            const isLocal = eventOps.some(
+            const isLocal = pendingEventOps.some(
               (op) => op.kind === "participant" && op.id === p.participantId,
             );
             return (

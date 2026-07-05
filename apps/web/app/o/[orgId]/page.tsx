@@ -6,6 +6,7 @@ import { requireMembership } from "@/lib/session";
 import { formatDateTime } from "@/lib/format";
 import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
 import { TypedDeleteConfirm } from "@/components/confirm";
+import { SaveButton } from "@/components/save-button";
 
 export default async function OrgHome({
   params,
@@ -155,7 +156,7 @@ export default async function OrgHome({
           <h3 className="font-medium">Manage organization</h3>
           <form action={renameOrg} className="mt-3 flex gap-2">
             <Input name="name" key={org?.name} defaultValue={org?.name ?? ""} required />
-            <Button className="shrink-0">Rename</Button>
+            <SaveButton className="shrink-0" savedLabel="Renamed ✓">Rename</SaveButton>
           </form>
           {role === "OWNER" && org ? (
             <div className="mt-4 border-t border-stone-100 pt-4">

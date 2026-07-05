@@ -7,6 +7,7 @@ import { parseQuestions } from "@/lib/forms";
 import { requireMembership } from "@/lib/session";
 import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm";
+import { SaveButton } from "@/components/save-button";
 
 const TYPE_LABELS: Record<string, string> = {
   text: "Short answer",
@@ -223,7 +224,7 @@ export default async function FormBuilder({
         <h3 className="font-medium">Manage form</h3>
         <form action={renameForm} className="mt-3 flex gap-2">
           <Input name="name" key={form.name} defaultValue={form.name} required />
-          <Button className="shrink-0">Rename</Button>
+          <SaveButton className="shrink-0" savedLabel="Renamed ✓">Rename</SaveButton>
         </form>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-stone-100 pt-3">
           <form action={toggleArchive}>
