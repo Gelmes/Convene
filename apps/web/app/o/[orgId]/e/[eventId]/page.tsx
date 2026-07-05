@@ -1,10 +1,12 @@
 import { createTenantClient } from "@convene/db";
+import { renameSchema } from "@convene/schemas";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireMembership } from "@/lib/session";
 import { formatDateTime } from "@/lib/format";
 import { r2Configured, r2Delete, r2PresignGet } from "@/lib/r2";
-import { BackLink, Badge, Button, Card, PageShell } from "@/components/ui";
+import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
+import { ConfirmButton } from "@/components/confirm";
 import { CopyField } from "@/components/copy-field";
 import { FieldCapture, type RosterEntry } from "@/components/field-capture";
 import { PhotoUploader } from "@/components/photo-uploader";
@@ -50,6 +52,7 @@ export default async function EventDetail({
       participantId: reg.participantId,
       firstName: reg.participant.firstName,
       lastName: reg.participant.lastName,
+      status: reg.status,
       latest: last
         ? {
             systolic: last.systolic,
@@ -96,6 +99,27 @@ export default async function EventDetail({
     const stageId = String(formData.get("stageId") ?? "");
     await db.events.setStage(eventId, stageId || null);
     revalidatePath(`/o/${orgId}/e/${eventId}`);
+  }
+
+  async function renameEvent(formData: FormData) {
+    "use server";
+    const { userId, role } = await requireMembership(orgId);
+    if (role !== "OWNER" && role !== "ADMIN") return;
+    const parsed = renameSchema.safeParse({ name: formData.get("name") });
+    if (!parsed.success) return;
+    const db = createTenantClient(orgId, userId);
+    await db.events.rename(eventId, parsed.data.name);
+    revalidatePath(`/o/${orgId}/e/${eventId}`);
+  }
+
+  async function deleteEvent() {
+    "use server";
+    const { userId, role } = await requireMembership(orgId);
+    if (role !== "OWNER" && role !== "ADMIN") return;
+    const db = createTenantClient(orgId, userId);
+    const storageKeys = await db.events.delete(eventId);
+    await Promise.all(storageKeys.map((key) => r2Delete(key).catch(() => {})));
+    redirect(`/o/${orgId}`);
   }
 
   return (
@@ -238,6 +262,23 @@ export default async function EventDetail({
             </form>
           </div>
         ) : null}
+      </Card>
+
+      {/* --- Manage ------------------------------------------------------------ */}
+      <Card className="mt-8 border-red-100 p-5">
+        <h3 className="font-medium">Manage event</h3>
+        <form action={renameEvent} className="mt-3 flex gap-2">
+          <Input name="name" defaultValue={event.title} required />
+          <Button className="shrink-0">Rename</Button>
+        </form>
+        <form action={deleteEvent} className="mt-3 border-t border-stone-100 pt-3">
+          <ConfirmButton
+            message={`Delete “${event.title}”? This permanently removes its ${roster.length} registration${roster.length === 1 ? "" : "s"} and ${photos.length} photo${photos.length === 1 ? "" : "s"}. Blood-pressure readings, intake submissions, and the participants themselves are KEPT — they just lose the link to this event.`}
+            className="w-full text-red-600 hover:bg-red-50 hover:text-red-700"
+          >
+            Delete event…
+          </ConfirmButton>
+        </form>
       </Card>
     </PageShell>
   );

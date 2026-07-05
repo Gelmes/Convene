@@ -90,6 +90,13 @@ export const createStageSchema = z.object({
 });
 export type CreateStageInput = z.infer<typeof createStageSchema>;
 
+export const renameSchema = z.object({
+  name: z.string().min(2, "Name is too short").max(140),
+});
+export type RenameInput = z.infer<typeof renameSchema>;
+
+export const advanceModeSchema = z.enum(["MANUAL", "AUTO"]);
+
 export const acceptInviteSchema = z.object({
   email: emailSchema.optional(),
   phone: z.string().max(30).optional(),
@@ -121,9 +128,17 @@ export const readingOpSchema = z.object({
   takenAt: z.coerce.date(), // captured at entry time, not sync time
 });
 
+export const checkinOpSchema = z.object({
+  kind: z.literal("checkin"),
+  id: z.string().uuid(),
+  eventId: z.string().min(1),
+  participantId: z.string().min(1),
+});
+
 export const syncOpSchema = z.discriminatedUnion("kind", [
   participantOpSchema,
   readingOpSchema,
+  checkinOpSchema,
 ]);
 export type SyncOp = z.infer<typeof syncOpSchema>;
 

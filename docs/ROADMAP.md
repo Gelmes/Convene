@@ -64,8 +64,16 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
   participants; StageCompletion history.
 - **Demo:** 3-stage program, link an event, take a BP there, watch Ready ✓,
   advance to completion 🎉.
-- *Later polish:* explicit check-in button on the event roster; program
-  progress on the participant portal (`/me`); kanban board view.
+- *Management polish (done ✅):* offline-capable **check-in button** on the event
+  roster; per-program **advance mode** (Manual / Automatic — auto applies lazily
+  when the roster loads); enrollment **reset** (wipe progress) and **remove**
+  (delete enrollment, participant data untouched); **rename + delete** for
+  programs, forms, events, and organizations with dependency-aware warnings
+  (form delete blocked when submissions exist → archive; event delete keeps
+  readings/submissions; org delete is OWNER-only with typed-name confirm and
+  cleans R2 binaries).
+- *Later polish:* program progress on the participant portal (`/me`); kanban
+  board view; BP trend chart.
 
 ### Phase 6 — Billing seam activated
 - Stripe subscriptions; Plans with limits; enforce limits from the plan.

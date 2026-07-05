@@ -224,6 +224,7 @@ model Program {
   name           String
   description    String?
   status         ProgramStatus @default(ACTIVE)
+  advanceMode    AdvanceMode   @default(MANUAL) // AUTO = advance when stage requirements are met
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -292,6 +293,11 @@ model StageCompletion {
 enum ProgramStatus {
   ACTIVE
   ARCHIVED
+}
+
+enum AdvanceMode {
+  MANUAL // host confirms every advance (Ready ✓ is a suggestion)
+  AUTO // requirements met → advance automatically (applied when the roster loads)
 }
 
 enum EnrollmentStatus {

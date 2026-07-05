@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
-import { participantOpSchema, readingOpSchema } from "@convene/schemas";
+import { checkinOpSchema, participantOpSchema, readingOpSchema } from "@convene/schemas";
 import { enqueueOp, flushOutbox, outboxDb } from "@/lib/outbox";
 import { Button, Card, Input } from "@/components/ui";
 
@@ -11,6 +11,7 @@ export interface RosterEntry {
   participantId: string;
   firstName: string;
   lastName: string | null;
+  status: string; // EventRegistration status (REGISTERED, CHECKED_IN, …)
   latest: {
     systolic: number;
     diastolic: number;
@@ -83,9 +84,20 @@ export function FieldCapture({
         participantId: op.id,
         firstName: op.firstName,
         lastName: op.lastName ?? null,
+        status: "REGISTERED",
         latest: null,
       });
     }
+  }
+
+  // Checked-in = server status, plus any pending offline check-in ops.
+  const checkedIn = new Set(
+    mergedRoster
+      .filter((p) => p.status === "CHECKED_IN" || p.status === "ATTENDED")
+      .map((p) => p.participantId),
+  );
+  for (const op of eventOps) {
+    if (op.kind === "checkin") checkedIn.add(op.participantId);
   }
   const latestByParticipant = new Map<string, RosterEntry["latest"]>();
   for (const entry of mergedRoster) {
@@ -119,6 +131,18 @@ export function FieldCapture({
     if (!parsed.success) return;
     await enqueueOp(orgId, parsed.data);
     form.reset();
+    void flush();
+  }
+
+  async function checkIn(participantId: string) {
+    const parsed = checkinOpSchema.safeParse({
+      kind: "checkin",
+      id: crypto.randomUUID(),
+      eventId,
+      participantId,
+    });
+    if (!parsed.success) return;
+    await enqueueOp(orgId, parsed.data);
     void flush();
   }
 
@@ -198,6 +222,11 @@ export function FieldCapture({
                     <summary className="flex cursor-pointer select-none items-center justify-between p-4 transition-colors hover:bg-stone-50">
                       <span className="flex items-center gap-2 font-medium text-stone-900">
                         {p.firstName} {p.lastName ?? ""}
+                        {checkedIn.has(p.participantId) ? (
+                          <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700 ring-1 ring-inset ring-sky-600/10">
+                            ✓ In
+                          </span>
+                        ) : null}
                         {isLocal ? (
                           <span className="text-xs font-normal text-amber-600">
                             ⟳ syncing
@@ -225,6 +254,16 @@ export function FieldCapture({
                       }}
                       className="space-y-3 border-t border-stone-100 bg-stone-50/50 p-4"
                     >
+                      {!checkedIn.has(p.participantId) ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => void checkIn(p.participantId)}
+                          className="w-full border border-dashed border-sky-300 bg-sky-50/50 text-sky-700 hover:bg-sky-100 hover:text-sky-800"
+                        >
+                          ✓ Check in
+                        </Button>
+                      ) : null}
                       <div className="flex gap-2">
                         <label className="flex-1 text-xs font-medium text-stone-500">
                           Systolic

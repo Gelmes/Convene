@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { createTenantClient } from "@convene/db";
-import { formQuestionSchema } from "@convene/schemas";
+import { formQuestionSchema, renameSchema } from "@convene/schemas";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { parseQuestions } from "@/lib/forms";
 import { requireMembership } from "@/lib/session";
 import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
+import { ConfirmButton } from "@/components/confirm";
 
 const TYPE_LABELS: Record<string, string> = {
   text: "Short answer",
@@ -80,6 +81,42 @@ export default async function FormBuilder({
     const db = createTenantClient(orgId, userId);
     await db.forms.publish(formId);
     revalidatePath(`/o/${orgId}/forms/${formId}`);
+  }
+
+  async function renameForm(formData: FormData) {
+    "use server";
+    const { userId, role } = await requireMembership(orgId);
+    if (role !== "OWNER" && role !== "ADMIN") return;
+    const parsed = renameSchema.safeParse({ name: formData.get("name") });
+    if (!parsed.success) return;
+    const db = createTenantClient(orgId, userId);
+    await db.forms.rename(formId, parsed.data.name);
+    revalidatePath(`/o/${orgId}/forms/${formId}`);
+  }
+
+  async function toggleArchive() {
+    "use server";
+    const { userId, role } = await requireMembership(orgId);
+    if (role !== "OWNER" && role !== "ADMIN") return;
+    const db = createTenantClient(orgId, userId);
+    const form = await db.forms.get(formId);
+    if (!form) return;
+    if (form.status === "ARCHIVED") await db.forms.unarchive(formId);
+    else await db.forms.archive(formId);
+    revalidatePath(`/o/${orgId}/forms/${formId}`);
+  }
+
+  async function deleteForm() {
+    "use server";
+    const { userId, role } = await requireMembership(orgId);
+    if (role !== "OWNER" && role !== "ADMIN") return;
+    const db = createTenantClient(orgId, userId);
+    try {
+      await db.forms.delete(formId);
+    } catch {
+      return; // has submissions — UI already disables this path
+    }
+    redirect(`/o/${orgId}/forms`);
   }
 
   return (
@@ -178,6 +215,38 @@ export default async function FormBuilder({
               {form.status === "PUBLISHED" ? "Publish changes" : "Publish"}
             </Button>
           </form>
+        </div>
+      </Card>
+
+      {/* --- Manage ------------------------------------------------------------ */}
+      <Card className="mt-10 border-red-100 p-5">
+        <h3 className="font-medium">Manage form</h3>
+        <form action={renameForm} className="mt-3 flex gap-2">
+          <Input name="name" defaultValue={form.name} required />
+          <Button className="shrink-0">Rename</Button>
+        </form>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-stone-100 pt-3">
+          <form action={toggleArchive}>
+            <Button variant="ghost" className="px-3 py-1.5 text-sm">
+              {form.status === "ARCHIVED" ? "Unarchive (re-publish)" : "Archive"}
+            </Button>
+          </form>
+          {form._count.submissions > 0 ? (
+            <p className="text-xs text-stone-400">
+              Can&apos;t delete — {form._count.submissions}{" "}
+              {form._count.submissions === 1 ? "submission" : "submissions"} would
+              be lost. Archive hides it from pickers while keeping the data.
+            </p>
+          ) : (
+            <form action={deleteForm}>
+              <ConfirmButton
+                message={`Delete “${form.name}”? It has no submissions, so nothing else is affected. Events using it as intake will simply have no form.`}
+                className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 hover:text-red-700"
+              >
+                Delete form…
+              </ConfirmButton>
+            </form>
+          )}
         </div>
       </Card>
     </PageShell>

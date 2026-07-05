@@ -1,9 +1,10 @@
 import { createTenantClient } from "@convene/db";
-import { createStageSchema } from "@convene/schemas";
+import { advanceModeSchema, createStageSchema, renameSchema } from "@convene/schemas";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireMembership } from "@/lib/session";
 import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
+import { ConfirmButton } from "@/components/confirm";
 
 const selectCls =
   "rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm text-stone-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20";
@@ -114,6 +115,52 @@ export default async function ProgramDetail({
     revalidatePath(path);
   }
 
+  async function resetEnrollment(formData: FormData) {
+    "use server";
+    const { userId } = await requireMembership(orgId);
+    const db = createTenantClient(orgId, userId);
+    await db.enrollments.reset(String(formData.get("enrollmentId")));
+    revalidatePath(path);
+  }
+
+  async function removeEnrollment(formData: FormData) {
+    "use server";
+    const { userId } = await requireMembership(orgId);
+    const db = createTenantClient(orgId, userId);
+    await db.enrollments.remove(String(formData.get("enrollmentId")));
+    revalidatePath(path);
+  }
+
+  async function setAdvanceMode(formData: FormData) {
+    "use server";
+    const { userId } = await requireMembership(orgId);
+    const parsed = advanceModeSchema.safeParse(formData.get("advanceMode"));
+    if (!parsed.success) return;
+    const db = createTenantClient(orgId, userId);
+    await db.programs.setAdvanceMode(programId, parsed.data);
+    revalidatePath(path);
+  }
+
+  async function renameProgram(formData: FormData) {
+    "use server";
+    const { userId, role } = await requireMembership(orgId);
+    if (role !== "OWNER" && role !== "ADMIN") return;
+    const parsed = renameSchema.safeParse({ name: formData.get("name") });
+    if (!parsed.success) return;
+    const db = createTenantClient(orgId, userId);
+    await db.programs.rename(programId, parsed.data.name);
+    revalidatePath(path);
+  }
+
+  async function deleteProgram() {
+    "use server";
+    const { userId, role } = await requireMembership(orgId);
+    if (role !== "OWNER" && role !== "ADMIN") return;
+    const db = createTenantClient(orgId, userId);
+    await db.programs.delete(programId);
+    redirect(`/o/${orgId}/programs`);
+  }
+
   return (
     <PageShell>
       <BackLink href={`/o/${orgId}/programs`}>Programs</BackLink>
@@ -214,6 +261,32 @@ export default async function ProgramDetail({
           Tip: link an event to a stage from the event&apos;s settings — attending
           it marks the participant ready to advance.
         </p>
+      </Card>
+
+      <Card className="mt-4 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-medium text-stone-700">Advancement</h3>
+            <p className="mt-0.5 max-w-xs text-xs text-stone-400">
+              {program.advanceMode === "AUTO"
+                ? "Participants advance on their own when a stage's requirements are met."
+                : "Requirements only suggest (Ready ✓) — you confirm every advance."}
+            </p>
+          </div>
+          <form action={setAdvanceMode} className="flex items-center gap-1.5">
+            <select
+              name="advanceMode"
+              defaultValue={program.advanceMode}
+              className={selectCls}
+            >
+              <option value="MANUAL">Manual — I confirm</option>
+              <option value="AUTO">Automatic</option>
+            </select>
+            <Button variant="ghost" className="px-2.5 py-1.5 text-xs">
+              Save
+            </Button>
+          </form>
+        </div>
       </Card>
 
       {/* --- Enrolled participants --------------------------------------------- */}
@@ -333,6 +406,27 @@ export default async function ProgramDetail({
                       </form>
                     </div>
 
+                    <div className="flex items-center gap-1 border-t border-stone-100 pt-2">
+                      <form action={resetEnrollment}>
+                        <input type="hidden" name="enrollmentId" value={e.id} />
+                        <ConfirmButton
+                          message={`Reset ${e.participant.firstName}'s progress? All completed stages are cleared and they go back to the first stage.`}
+                          className="px-2.5 py-1.5 text-xs"
+                        >
+                          ↺ Reset progress
+                        </ConfirmButton>
+                      </form>
+                      <form action={removeEnrollment}>
+                        <input type="hidden" name="enrollmentId" value={e.id} />
+                        <ConfirmButton
+                          message={`Remove ${e.participant.firstName} from this program entirely? Their progress here is deleted (their events, readings, and intake are kept). Use Drop instead to keep the record.`}
+                          className="px-2.5 py-1.5 text-xs text-red-500 hover:bg-red-50 hover:text-red-700"
+                        >
+                          Remove from program
+                        </ConfirmButton>
+                      </form>
+                    </div>
+
                     <a
                       href={`/o/${orgId}/p/${e.participantId}`}
                       className="block text-xs font-medium text-stone-500 underline-offset-2 hover:text-emerald-700 hover:underline"
@@ -364,6 +458,23 @@ export default async function ProgramDetail({
           </form>
         </Card>
       ) : null}
+
+      {/* --- Manage ------------------------------------------------------------ */}
+      <Card className="mt-10 border-red-100 p-5">
+        <h3 className="font-medium">Manage program</h3>
+        <form action={renameProgram} className="mt-3 flex gap-2">
+          <Input name="name" defaultValue={program.name} required />
+          <Button className="shrink-0">Rename</Button>
+        </form>
+        <form action={deleteProgram} className="mt-3 border-t border-stone-100 pt-3">
+          <ConfirmButton
+            message={`Delete “${program.name}”? This permanently removes its ${program.stages.length} stage${program.stages.length === 1 ? "" : "s"} and ${enrollments.length} enrollment${enrollments.length === 1 ? "" : "s"} (all progress history). Participants themselves — and their events, readings, and intake — are NOT deleted. Linked events lose their stage link.`}
+            className="w-full text-red-600 hover:bg-red-50 hover:text-red-700"
+          >
+            Delete program…
+          </ConfirmButton>
+        </form>
+      </Card>
     </PageShell>
   );
 }

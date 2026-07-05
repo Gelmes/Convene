@@ -3,6 +3,102 @@ import { recordAudit } from "./audit";
 import { prisma } from "./client";
 
 /**
+ * Does the participant meet this stage's requirements?
+ * Returns null when the stage has no requirements (host judgment),
+ * otherwise true/false. Attendance = checked-in/attended registration OR a BP
+ * reading captured at a linked event (being measured there proves presence).
+ */
+async function meetsStageRequirements(
+  organizationId: string,
+  participantId: string,
+  stage: { events: Array<{ id: string }>; requiredFormTemplateId: string | null },
+): Promise<boolean | null> {
+  const needsEvent = stage.events.length > 0;
+  const needsForm = Boolean(stage.requiredFormTemplateId);
+  if (!needsEvent && !needsForm) return null;
+
+  const stageEventIds = stage.events.map((ev) => ev.id);
+  const [attended, submitted] = await Promise.all([
+    needsEvent
+      ? Promise.all([
+          prisma.eventRegistration.findFirst({
+            where: {
+              organizationId,
+              participantId,
+              eventId: { in: stageEventIds },
+              status: { in: ["CHECKED_IN", "ATTENDED"] },
+            },
+            select: { id: true },
+          }),
+          prisma.healthReading.findFirst({
+            where: {
+              organizationId,
+              participantId,
+              eventId: { in: stageEventIds },
+            },
+            select: { id: true },
+          }),
+        ]).then(([reg, reading]) => Boolean(reg ?? reading))
+      : Promise.resolve(true),
+    needsForm
+      ? prisma.formSubmission
+          .findFirst({
+            where: {
+              organizationId,
+              participantId,
+              formTemplateId: stage.requiredFormTemplateId!,
+            },
+            select: { id: true },
+          })
+          .then(Boolean)
+      : Promise.resolve(true),
+  ]);
+  return attended && submitted;
+}
+
+/** Complete the enrollment's current stage and move to the next (or finish). */
+async function advanceEnrollment(
+  organizationId: string,
+  enrollmentId: string,
+): Promise<void> {
+  const enrollment = await prisma.programEnrollment.findFirst({
+    where: { id: enrollmentId, organizationId },
+    include: {
+      currentStage: { select: { id: true, programId: true, order: true } },
+    },
+  });
+  if (!enrollment?.currentStage) return;
+
+  const next = await prisma.stage.findFirst({
+    where: {
+      programId: enrollment.currentStage.programId,
+      order: { gt: enrollment.currentStage.order },
+    },
+    orderBy: { order: "asc" },
+    select: { id: true },
+  });
+
+  await prisma.$transaction([
+    prisma.stageCompletion.upsert({
+      where: {
+        enrollmentId_stageId: {
+          enrollmentId,
+          stageId: enrollment.currentStage.id,
+        },
+      },
+      create: { organizationId, enrollmentId, stageId: enrollment.currentStage.id },
+      update: {},
+    }),
+    prisma.programEnrollment.update({
+      where: { id: enrollmentId },
+      data: next
+        ? { currentStageId: next.id }
+        : { currentStageId: null, status: "COMPLETED" },
+    }),
+  ]);
+}
+
+/**
  * The org-scoped data-access layer. ALL tenant data flows through here so
  * feature code can never accidentally cross tenants — every query is scoped to
  * `organizationId`. Health-data access is audited, and the free-text note runs
@@ -84,6 +180,28 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
           where: { id: eventId, organizationId },
           data: { publicRegistration: enabled },
         });
+      },
+      rename(eventId: string, title: string) {
+        return prisma.event.updateMany({
+          where: { id: eventId, organizationId },
+          data: { title },
+        });
+      },
+      /**
+       * Deletes the event and its registrations + photo records; BP readings,
+       * form submissions, and invites are KEPT (their event link nulls out).
+       * Returns the R2 storage keys of deleted photos so the caller can remove
+       * the binaries.
+       */
+      async delete(eventId: string): Promise<string[]> {
+        const photos = await prisma.photo.findMany({
+          where: { eventId, organizationId },
+          select: { storageKey: true },
+        });
+        const result = await prisma.event.deleteMany({
+          where: { id: eventId, organizationId },
+        });
+        return result.count > 0 ? photos.map((p) => p.storageKey) : [];
       },
       /** Link this event to a program stage (attending it satisfies the stage). */
       async setStage(eventId: string, stageId: string | null) {
@@ -202,6 +320,26 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
           include: { event: { select: { id: true, title: true } } },
         });
       },
+      /** Mark a participant as checked in at an event (idempotent; never
+       *  downgrades an ATTENDED registration). */
+      async checkIn(eventId: string, participantId: string) {
+        const event = await prisma.event.findFirst({
+          where: { id: eventId, organizationId },
+          select: { id: true },
+        });
+        if (!event) throw new Error("Event not found in this organization");
+        return prisma.eventRegistration.upsert({
+          where: { eventId_participantId: { eventId, participantId } },
+          create: {
+            organizationId,
+            eventId,
+            participantId,
+            status: "CHECKED_IN",
+            source: "HOST_ADDED",
+          },
+          update: { status: "CHECKED_IN" },
+        });
+      },
       setStatus(registrationId: string, status: "REGISTERED" | "CHECKED_IN" | "ATTENDED" | "NO_SHOW") {
         return prisma.eventRegistration.updateMany({
           where: { id: registrationId, organizationId },
@@ -226,7 +364,10 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
         });
       },
       get(id: string) {
-        return prisma.formTemplate.findFirst({ where: { id, organizationId } });
+        return prisma.formTemplate.findFirst({
+          where: { id, organizationId },
+          include: { _count: { select: { submissions: true } } },
+        });
       },
       create(data: { name: string; description?: string }) {
         return prisma.formTemplate.create({
@@ -243,6 +384,38 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
           where: { id, organizationId },
           data: { questions: questions as object[] },
         });
+      },
+      rename(id: string, name: string) {
+        return prisma.formTemplate.updateMany({
+          where: { id, organizationId },
+          data: { name },
+        });
+      },
+      /** Archive: form disappears from pickers but submissions stay readable. */
+      archive(id: string) {
+        return prisma.formTemplate.updateMany({
+          where: { id, organizationId },
+          data: { status: "ARCHIVED" },
+        });
+      },
+      unarchive(id: string) {
+        return prisma.formTemplate.updateMany({
+          where: { id, organizationId },
+          data: { status: "PUBLISHED" },
+        });
+      },
+      /** Hard delete — only allowed when the form has NO submissions, because
+       *  deleting would cascade them away. Archive instead when it has data. */
+      async delete(id: string) {
+        const count = await prisma.formSubmission.count({
+          where: { formTemplateId: id, organizationId },
+        });
+        if (count > 0) {
+          throw new Error(
+            `This form has ${count} submission${count === 1 ? "" : "s"} — archive it instead of deleting`,
+          );
+        }
+        return prisma.formTemplate.deleteMany({ where: { id, organizationId } });
       },
       /** Publish a draft; re-publishing after edits bumps the version. */
       async publish(id: string) {
@@ -451,6 +624,24 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
           },
         });
       },
+      rename(id: string, name: string) {
+        return prisma.program.updateMany({
+          where: { id, organizationId },
+          data: { name },
+        });
+      },
+      setAdvanceMode(id: string, advanceMode: "MANUAL" | "AUTO") {
+        return prisma.program.updateMany({
+          where: { id, organizationId },
+          data: { advanceMode },
+        });
+      },
+      /** Deletes the program, its stages, enrollments, and completions.
+       *  Participants and their event/health data are untouched; linked
+       *  events just lose their stage link. */
+      delete(id: string) {
+        return prisma.program.deleteMany({ where: { id, organizationId } });
+      },
       /** Every stage in the org with its program name (for link pickers). */
       listAllStages() {
         return prisma.stage.findMany({
@@ -531,70 +722,77 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
        * all of them are satisfied. No requirements → host judgment, no flag.
        */
       async listForProgram(programId: string) {
-        const enrollments = await prisma.programEnrollment.findMany({
-          where: { organizationId, programId },
-          orderBy: { enrolledAt: "asc" },
-          include: {
-            participant: {
-              select: { id: true, firstName: true, lastName: true },
-            },
-            currentStage: {
-              include: {
-                events: { select: { id: true } },
-                requiredForm: { select: { id: true, name: true } },
-              },
-            },
-            completions: { select: { stageId: true } },
-          },
+        const program = await prisma.program.findFirst({
+          where: { id: programId, organizationId },
+          select: { advanceMode: true },
         });
+
+        const fetch = () =>
+          prisma.programEnrollment.findMany({
+            where: { organizationId, programId },
+            orderBy: { enrolledAt: "asc" },
+            include: {
+              participant: {
+                select: { id: true, firstName: true, lastName: true },
+              },
+              currentStage: {
+                include: {
+                  events: { select: { id: true } },
+                  requiredForm: { select: { id: true, name: true } },
+                },
+              },
+              completions: { select: { stageId: true } },
+            },
+          });
+
+        let enrollments = await fetch();
+
+        // AUTO mode: advance every enrollment whose requirements are met,
+        // chaining through multiple stages if needed (applied lazily on load).
+        if (program?.advanceMode === "AUTO") {
+          let anyAdvanced = false;
+          for (const e of enrollments) {
+            let current = e;
+            for (let guard = 0; guard < 25; guard++) {
+              if (current.status !== "ACTIVE" || !current.currentStage) break;
+              const met = await meetsStageRequirements(
+                organizationId,
+                current.participantId,
+                current.currentStage,
+              );
+              if (met !== true) break; // false OR no-requirements → host decides
+              await advanceEnrollment(organizationId, current.id);
+              anyAdvanced = true;
+              const reloaded = await prisma.programEnrollment.findFirst({
+                where: { id: current.id },
+                include: {
+                  participant: { select: { id: true, firstName: true, lastName: true } },
+                  currentStage: {
+                    include: {
+                      events: { select: { id: true } },
+                      requiredForm: { select: { id: true, name: true } },
+                    },
+                  },
+                  completions: { select: { stageId: true } },
+                },
+              });
+              if (!reloaded) break;
+              current = reloaded;
+            }
+          }
+          if (anyAdvanced) enrollments = await fetch();
+        }
 
         return Promise.all(
           enrollments.map(async (e) => {
             let ready = false;
-            const stage = e.currentStage;
-            if (e.status === "ACTIVE" && stage) {
-              const needsEvent = stage.events.length > 0;
-              const needsForm = Boolean(stage.requiredFormTemplateId);
-              if (needsEvent || needsForm) {
-                const stageEventIds = stage.events.map((ev) => ev.id);
-                const [attended, submitted] = await Promise.all([
-                  needsEvent
-                    ? // Attendance = checked-in/attended registration, OR a BP
-                      // reading captured at the event (being measured there is
-                      // proof of presence — no separate check-in step needed).
-                      Promise.all([
-                        prisma.eventRegistration.findFirst({
-                          where: {
-                            organizationId,
-                            participantId: e.participantId,
-                            eventId: { in: stageEventIds },
-                            status: { in: ["CHECKED_IN", "ATTENDED"] },
-                          },
-                          select: { id: true },
-                        }),
-                        prisma.healthReading.findFirst({
-                          where: {
-                            organizationId,
-                            participantId: e.participantId,
-                            eventId: { in: stageEventIds },
-                          },
-                          select: { id: true },
-                        }),
-                      ]).then(([reg, reading]) => reg ?? reading)
-                    : Promise.resolve(true),
-                  needsForm
-                    ? prisma.formSubmission.findFirst({
-                        where: {
-                          organizationId,
-                          participantId: e.participantId,
-                          formTemplateId: stage.requiredFormTemplateId!,
-                        },
-                        select: { id: true },
-                      })
-                    : Promise.resolve(true),
-                ]);
-                ready = Boolean(attended) && Boolean(submitted);
-              }
+            if (e.status === "ACTIVE" && e.currentStage) {
+              ready =
+                (await meetsStageRequirements(
+                  organizationId,
+                  e.participantId,
+                  e.currentStage,
+                )) === true;
             }
             return { ...e, ready };
           }),
@@ -633,44 +831,39 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
       },
 
       /** Complete the current stage and move to the next (or finish the program). */
-      async advance(enrollmentId: string) {
+      advance(enrollmentId: string) {
+        return advanceEnrollment(organizationId, enrollmentId);
+      },
+
+      /** Wipe progress: clear completions, back to the first stage, ACTIVE. */
+      async reset(enrollmentId: string) {
         const enrollment = await prisma.programEnrollment.findFirst({
           where: { id: enrollmentId, organizationId },
-          include: { currentStage: { select: { id: true, programId: true, order: true } } },
+          select: { id: true, programId: true },
         });
-        if (!enrollment?.currentStage) return;
-
-        const next = await prisma.stage.findFirst({
-          where: {
-            programId: enrollment.currentStage.programId,
-            order: { gt: enrollment.currentStage.order },
-          },
+        if (!enrollment) return;
+        const firstStage = await prisma.stage.findFirst({
+          where: { programId: enrollment.programId },
           orderBy: { order: "asc" },
           select: { id: true },
         });
-
         await prisma.$transaction([
-          prisma.stageCompletion.upsert({
-            where: {
-              enrollmentId_stageId: {
-                enrollmentId,
-                stageId: enrollment.currentStage.id,
-              },
-            },
-            create: {
-              organizationId,
-              enrollmentId,
-              stageId: enrollment.currentStage.id,
-            },
-            update: {},
+          prisma.stageCompletion.deleteMany({
+            where: { enrollmentId, organizationId },
           }),
           prisma.programEnrollment.update({
             where: { id: enrollmentId },
-            data: next
-              ? { currentStageId: next.id }
-              : { currentStageId: null, status: "COMPLETED" },
+            data: { currentStageId: firstStage?.id ?? null, status: "ACTIVE" },
           }),
         ]);
+      },
+
+      /** Remove the enrollment entirely (completions cascade). The participant
+       *  record and all their event/health data are untouched. */
+      remove(enrollmentId: string) {
+        return prisma.programEnrollment.deleteMany({
+          where: { id: enrollmentId, organizationId },
+        });
       },
 
       /** Host override: place the enrollment at any stage. */

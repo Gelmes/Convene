@@ -1,9 +1,11 @@
 import { createTenantClient, prisma } from "@convene/db";
-import { createEventSchema } from "@convene/schemas";
+import { createEventSchema, renameSchema } from "@convene/schemas";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireMembership } from "@/lib/session";
 import { formatDateTime } from "@/lib/format";
 import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
+import { TypedDeleteConfirm } from "@/components/confirm";
 
 export default async function OrgHome({
   params,
@@ -11,9 +13,14 @@ export default async function OrgHome({
   params: Promise<{ orgId: string }>;
 }) {
   const { orgId } = await params;
-  const { userId } = await requireMembership(orgId);
+  const { userId, role } = await requireMembership(orgId);
 
-  const org = await prisma.organization.findUnique({ where: { id: orgId } });
+  const org = await prisma.organization.findUnique({
+    where: { id: orgId },
+    include: {
+      _count: { select: { participants: true, events: true, healthReadings: true } },
+    },
+  });
   const db = createTenantClient(orgId, userId);
   const events = await db.events.list();
 
@@ -29,6 +36,39 @@ export default async function OrgHome({
     const db = createTenantClient(orgId, userId);
     await db.events.create(parsed.data);
     revalidatePath(`/o/${orgId}`);
+  }
+
+  async function renameOrg(formData: FormData) {
+    "use server";
+    const { role } = await requireMembership(orgId);
+    if (role !== "OWNER" && role !== "ADMIN") return;
+    const parsed = renameSchema.safeParse({ name: formData.get("name") });
+    if (!parsed.success) return;
+    await prisma.organization.update({
+      where: { id: orgId },
+      data: { name: parsed.data.name },
+    });
+    revalidatePath(`/o/${orgId}`);
+  }
+
+  async function deleteOrg(formData: FormData) {
+    "use server";
+    const { role } = await requireMembership(orgId);
+    if (role !== "OWNER") return;
+    const org = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { name: true },
+    });
+    // Server-side re-check of the typed confirmation — never trust the client.
+    if (!org || formData.get("confirm") !== org.name) return;
+    const photos = await prisma.photo.findMany({
+      where: { organizationId: orgId },
+      select: { storageKey: true },
+    });
+    await prisma.organization.delete({ where: { id: orgId } });
+    const { r2Delete } = await import("@/lib/r2");
+    await Promise.all(photos.map((p) => r2Delete(p.storageKey).catch(() => {})));
+    redirect("/dashboard");
   }
 
   return (
@@ -108,6 +148,35 @@ export default async function OrgHome({
           <Button className="w-full">Create event</Button>
         </form>
       </Card>
+
+      {/* --- Manage ------------------------------------------------------------ */}
+      {role === "OWNER" || role === "ADMIN" ? (
+        <Card className="mt-10 border-red-100 p-5">
+          <h3 className="font-medium">Manage organization</h3>
+          <form action={renameOrg} className="mt-3 flex gap-2">
+            <Input name="name" defaultValue={org?.name ?? ""} required />
+            <Button className="shrink-0">Rename</Button>
+          </form>
+          {role === "OWNER" && org ? (
+            <div className="mt-4 border-t border-stone-100 pt-4">
+              <p className="text-sm font-medium text-red-700">Delete organization</p>
+              <p className="mt-1 text-xs leading-relaxed text-stone-500">
+                Permanently deletes <strong>everything</strong>: {org._count.events}{" "}
+                events, {org._count.participants} participants,{" "}
+                {org._count.healthReadings} health readings, all forms,
+                submissions, photos, programs, and invites. This cannot be
+                undone.
+              </p>
+              <form action={deleteOrg} className="mt-3">
+                <TypedDeleteConfirm
+                  expected={org.name}
+                  label="Delete this organization forever"
+                />
+              </form>
+            </div>
+          ) : null}
+        </Card>
+      ) : null}
     </PageShell>
   );
 }
