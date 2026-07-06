@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { parseQuestions } from "@/lib/forms";
 import { requireMembership } from "@/lib/session";
-import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
+import { BackLink, Badge, Button, Card, Input, PageShell, Select } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm";
 import { Rollout } from "@/components/rollout";
 import { SaveButton } from "@/components/save-button";
@@ -195,16 +195,13 @@ export default async function FormBuilder({
                 placeholder="Question, e.g. Any medical conditions?"
               />
               <div className="flex flex-wrap items-center gap-3">
-                <select
-                  name="type"
-                  className="rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-sm text-stone-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                >
+                <Select name="type">
                   {Object.entries(TYPE_LABELS).map(([value, label]) => (
                     <option key={value} value={value}>
                       {label}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <label className="flex items-center gap-2 text-sm text-stone-600">
                   <input
                     type="checkbox"

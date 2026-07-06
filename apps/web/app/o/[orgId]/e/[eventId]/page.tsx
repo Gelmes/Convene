@@ -1,12 +1,22 @@
 import { createTenantClient } from "@convene/db";
-import { renameSchema } from "@convene/schemas";
+import { updateEventSchema } from "@convene/schemas";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireMembership } from "@/lib/session";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, toDateTimeLocalValue } from "@/lib/format";
 import { r2Configured, r2Delete, r2PresignGet } from "@/lib/r2";
-import { BackLink, Badge, Button, Card, Input, PageShell, TabBar } from "@/components/ui";
+import {
+  BackLink,
+  Badge,
+  Button,
+  Card,
+  Input,
+  PageShell,
+  Select,
+  TabBar,
+  Textarea,
+} from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm";
 import { SaveButton } from "@/components/save-button";
 import { CopyField } from "@/components/copy-field";
@@ -120,14 +130,19 @@ export default async function EventDetail({
     revalidatePath(`/o/${orgId}/e/${eventId}`);
   }
 
-  async function renameEvent(formData: FormData) {
+  async function updateEvent(formData: FormData) {
     "use server";
     const { userId, role } = await requireMembership(orgId);
     if (role !== "OWNER" && role !== "ADMIN") return;
-    const parsed = renameSchema.safeParse({ name: formData.get("name") });
+    const parsed = updateEventSchema.safeParse({
+      title: formData.get("title"),
+      description: (formData.get("description") as string)?.trim() || undefined,
+      location: (formData.get("location") as string)?.trim() || undefined,
+      startsAt: formData.get("startsAt"),
+    });
     if (!parsed.success) return;
     const db = createTenantClient(orgId, userId);
-    await db.events.rename(eventId, parsed.data.name);
+    await db.events.update(eventId, parsed.data);
     revalidatePath(`/o/${orgId}/e/${eventId}`);
   }
 
@@ -265,11 +280,11 @@ export default async function EventDetail({
             Questions participants answer when they register.
           </p>
           <form action={setIntakeForm} className="mt-2 flex gap-2">
-            <select
+            <Select
               name="formTemplateId"
               key={event.intakeForm?.id ?? "none"}
               defaultValue={event.intakeForm?.id ?? ""}
-              className="flex-1 rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-sm text-stone-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="flex-1"
             >
               <option value="">No intake form</option>
               {publishedForms.map((f) => (
@@ -277,7 +292,7 @@ export default async function EventDetail({
                   {f.name} (v{f.version})
                 </option>
               ))}
-            </select>
+            </Select>
             <SaveButton className="shrink-0">Save</SaveButton>
           </form>
           {publishedForms.length === 0 ? (
@@ -298,11 +313,11 @@ export default async function EventDetail({
               Attending this event marks that stage&apos;s requirement as met.
             </p>
             <form action={setStage} className="mt-2 flex gap-2">
-              <select
+              <Select
                 name="stageId"
                 key={event.stageId ?? "none"}
                 defaultValue={event.stageId ?? ""}
-                className="flex-1 rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-sm text-stone-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                className="flex-1"
               >
                 <option value="">Not linked to a stage</option>
                 {allStages.map((s) => (
@@ -310,7 +325,7 @@ export default async function EventDetail({
                     {s.program.name} — {s.name}
                   </option>
                 ))}
-              </select>
+              </Select>
               <SaveButton className="shrink-0">Save</SaveButton>
             </form>
           </div>
@@ -319,10 +334,56 @@ export default async function EventDetail({
 
       {/* --- Manage ------------------------------------------------------------ */}
       <Card className="mt-6 border-red-100 p-5">
-        <h3 className="font-medium">Manage event</h3>
-        <form action={renameEvent} className="mt-3 flex gap-2">
-          <Input name="name" key={event.title} defaultValue={event.title} required />
-          <SaveButton className="shrink-0" savedLabel="Renamed ✓">Rename</SaveButton>
+        <h3 className="font-medium">Event details</h3>
+        <form action={updateEvent} className="mt-3 space-y-3">
+          <label className="block text-xs font-medium text-stone-500">
+            Title
+            <Input
+              name="title"
+              key={event.title}
+              defaultValue={event.title}
+              required
+              className="mt-1"
+            />
+          </label>
+          <label className="block text-xs font-medium text-stone-500">
+            Description{" "}
+            <span className="font-normal text-stone-400">
+              (shown on the public registration page)
+            </span>
+            <Textarea
+              name="description"
+              key={event.description ?? "none"}
+              defaultValue={event.description ?? ""}
+              rows={3}
+              placeholder="What participants should know…"
+              className="mt-1 text-sm"
+            />
+          </label>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <label className="block flex-1 text-xs font-medium text-stone-500">
+              Location
+              <Input
+                name="location"
+                key={event.location ?? "none"}
+                defaultValue={event.location ?? ""}
+                placeholder="Location"
+                className="mt-1"
+              />
+            </label>
+            <label className="block flex-1 text-xs font-medium text-stone-500">
+              Starts at
+              <Input
+                name="startsAt"
+                type="datetime-local"
+                key={event.startsAt.toISOString()}
+                defaultValue={toDateTimeLocalValue(event.startsAt)}
+                required
+                className="mt-1"
+              />
+            </label>
+          </div>
+          <SaveButton className="w-full">Save changes</SaveButton>
         </form>
         <form action={deleteEvent} className="mt-3 border-t border-stone-100 pt-3">
           <ConfirmButton

@@ -95,6 +95,14 @@ export const renameSchema = z.object({
 });
 export type RenameInput = z.infer<typeof renameSchema>;
 
+export const updateEventSchema = z.object({
+  title: z.string().min(2, "Title is too short").max(140),
+  description: z.string().max(2000).optional(),
+  location: z.string().max(200).optional(),
+  startsAt: z.coerce.date(),
+});
+export type UpdateEventInput = z.infer<typeof updateEventSchema>;
+
 export const advanceModeSchema = z.enum(["MANUAL", "AUTO"]);
 
 export const acceptInviteSchema = z.object({

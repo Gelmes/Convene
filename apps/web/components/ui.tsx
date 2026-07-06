@@ -4,6 +4,8 @@ import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
   ReactNode,
+  SelectHTMLAttributes,
+  TextareaHTMLAttributes,
 } from "react";
 
 /*
@@ -68,6 +70,56 @@ export function Input({
 }: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
+      className={cx(
+        "w-full rounded-xl border border-stone-200 bg-white px-3.5 py-2.5",
+        "text-stone-900 shadow-sm transition-all duration-150",
+        "hover:border-stone-300",
+        "focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+const CHEVRON =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%2378716c' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E\")";
+
+/**
+ * Styled select: custom chevron (the native arrow ignores padding and hugs the
+ * edge) and min-w-0 so it can shrink inside flex rows instead of overflowing
+ * small screens.
+ */
+export function Select({
+  className,
+  ...props
+}: SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select
+      style={{
+        backgroundImage: CHEVRON,
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: "right 0.875rem center",
+        backgroundSize: "1rem",
+      }}
+      className={cx(
+        "min-w-0 appearance-none truncate rounded-xl border border-stone-200 bg-white py-2.5 pl-3.5 pr-10",
+        "text-sm text-stone-900 shadow-sm transition-all duration-150",
+        "hover:border-stone-300",
+        "focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export function Textarea({
+  className,
+  ...props
+}: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
       className={cx(
         "w-full rounded-xl border border-stone-200 bg-white px-3.5 py-2.5",
         "text-stone-900 shadow-sm transition-all duration-150",
@@ -153,7 +205,7 @@ export function TabBar({
           href={i === 0 ? base : `${base}?tab=${t.key}`}
           aria-current={active === t.key ? "page" : undefined}
           className={cx(
-            "flex-1 rounded-xl px-3 py-2 text-center text-sm font-medium transition-all duration-150",
+            "flex-1 whitespace-nowrap rounded-xl px-2 py-2 text-center text-sm font-medium transition-all duration-150 sm:px-3",
             active === t.key
               ? "bg-white text-stone-900 shadow-sm"
               : "text-stone-500 hover:text-stone-800",

@@ -4,13 +4,10 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireMembership } from "@/lib/session";
-import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
+import { BackLink, Badge, Button, Card, Input, PageShell, Select } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm";
 import { Rollout } from "@/components/rollout";
 import { SaveButton } from "@/components/save-button";
-
-const selectCls =
-  "rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm text-stone-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20";
 
 export default async function ProgramDetail({
   params,
@@ -187,15 +184,15 @@ export default async function ProgramDetail({
                 </p>
               </div>
               <form action={setAdvanceMode} className="flex items-center gap-1.5">
-                <select
+                <Select
                   name="advanceMode"
                   key={program.advanceMode}
                   defaultValue={program.advanceMode}
-                  className={selectCls}
+                  className=""
                 >
                   <option value="MANUAL">Manual — I confirm</option>
                   <option value="AUTO">Automatic</option>
-                </select>
+                </Select>
                 <SaveButton variant="ghost" className="px-2.5 py-1.5 text-xs">
                   Save
                 </SaveButton>
@@ -304,11 +301,11 @@ export default async function ProgramDetail({
                   </span>
                   <form action={setStageForm} className="flex items-center gap-1.5">
                     <input type="hidden" name="stageId" value={s.id} />
-                    <select
+                    <Select
                       name="formTemplateId"
                       key={s.requiredForm?.id ?? "none"}
                       defaultValue={s.requiredForm?.id ?? ""}
-                      className={selectCls}
+                      className=""
                     >
                       <option value="">None</option>
                       {publishedForms.map((f) => (
@@ -316,7 +313,7 @@ export default async function ProgramDetail({
                           {f.name}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                     <SaveButton variant="ghost" className="px-2.5 py-1.5 text-xs">
                       Save
                     </SaveButton>
@@ -344,11 +341,11 @@ export default async function ProgramDetail({
           {enrollable.length > 0 ? (
             <Card className="p-4">
               <form action={enroll} className="flex gap-2">
-                <select
+                <Select
                   name="participantId"
                   required
                   defaultValue=""
-                  className={`${selectCls} flex-1`}
+                  className="flex-1"
                 >
                   <option value="" disabled>
                     Choose a participant…
@@ -358,7 +355,7 @@ export default async function ProgramDetail({
                       {p.firstName} {p.lastName ?? ""}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <Button className="shrink-0">Enroll</Button>
               </form>
             </Card>
@@ -435,7 +432,7 @@ export default async function ProgramDetail({
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <form action={moveTo} className="flex items-center gap-1.5">
                         <input type="hidden" name="enrollmentId" value={e.id} />
-                        <select name="stageId" defaultValue="" className={selectCls}>
+                        <Select name="stageId" defaultValue="">
                           <option value="" disabled>
                             Move to stage…
                           </option>
@@ -444,7 +441,7 @@ export default async function ProgramDetail({
                               {s.name}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                         <Button variant="ghost" className="px-2.5 py-1.5 text-xs">
                           Move
                         </Button>

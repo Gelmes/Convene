@@ -187,6 +187,26 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
           data: { title },
         });
       },
+      /** Edit the event's core details (title, description, location, start). */
+      update(
+        eventId: string,
+        data: {
+          title: string;
+          description?: string | null;
+          location?: string | null;
+          startsAt: Date;
+        },
+      ) {
+        return prisma.event.updateMany({
+          where: { id: eventId, organizationId },
+          data: {
+            title: data.title,
+            description: data.description ?? null,
+            location: data.location ?? null,
+            startsAt: data.startsAt,
+          },
+        });
+      },
       /**
        * Deletes the event and its registrations + photo records; BP readings,
        * form submissions, and invites are KEPT (their event link nulls out).
