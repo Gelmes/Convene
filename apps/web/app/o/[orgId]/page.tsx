@@ -6,6 +6,7 @@ import { requireMembership } from "@/lib/session";
 import { formatDateTime } from "@/lib/format";
 import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
 import { TypedDeleteConfirm } from "@/components/confirm";
+import { Rollout } from "@/components/rollout";
 import { SaveButton } from "@/components/save-button";
 
 export default async function OrgHome({
@@ -24,6 +25,8 @@ export default async function OrgHome({
   });
   const db = createTenantClient(orgId, userId);
   const events = await db.events.list();
+
+  const canManage = role === "OWNER" || role === "ADMIN";
 
   async function createEvent(formData: FormData) {
     "use server";
@@ -76,112 +79,131 @@ export default async function OrgHome({
     redirect("/dashboard");
   }
 
+  const title = (
+    <h1 className="min-w-0 truncate text-2xl font-bold tracking-tight">
+      {org?.name}
+    </h1>
+  );
+
   return (
     <PageShell>
       <BackLink href="/dashboard">All organizations</BackLink>
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <h1 className="min-w-0 truncate text-2xl font-bold tracking-tight">
-          {org?.name}
-        </h1>
-        <span className="flex shrink-0 items-center gap-1">
+
+      <div className="mt-3">
+        {canManage && org ? (
+          <Rollout heading={title} label="Edit">
+            <Card className="p-4">
+              <form action={renameOrg} className="flex gap-2">
+                <Input name="name" key={org.name} defaultValue={org.name} required />
+                <SaveButton className="shrink-0" savedLabel="Renamed ✓">
+                  Rename
+                </SaveButton>
+              </form>
+              {role === "OWNER" ? (
+                <div className="mt-4 border-t border-stone-100 pt-4">
+                  <p className="text-sm font-medium text-red-700">
+                    Delete organization
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-stone-500">
+                    Permanently deletes <strong>everything</strong>:{" "}
+                    {org._count.events} events, {org._count.participants}{" "}
+                    participants, {org._count.healthReadings} health readings,
+                    all forms, submissions, photos, programs, and invites. This
+                    cannot be undone.
+                  </p>
+                  <form action={deleteOrg} className="mt-3">
+                    <TypedDeleteConfirm
+                      expected={org.name}
+                      label="Delete this organization forever"
+                    />
+                  </form>
+                </div>
+              ) : null}
+            </Card>
+          </Rollout>
+        ) : (
+          title
+        )}
+        <nav className="mt-2 flex gap-1">
           <a
             href={`/o/${orgId}/programs`}
-            className="rounded-xl px-3 py-1.5 text-sm font-medium text-stone-500 transition-colors hover:bg-stone-900/5 hover:text-stone-900"
+            className="rounded-xl px-2.5 py-1 text-sm font-medium text-stone-500 transition-colors hover:bg-stone-900/5 hover:text-stone-900"
           >
             Programs
           </a>
           <a
             href={`/o/${orgId}/forms`}
-            className="rounded-xl px-3 py-1.5 text-sm font-medium text-stone-500 transition-colors hover:bg-stone-900/5 hover:text-stone-900"
+            className="rounded-xl px-2.5 py-1 text-sm font-medium text-stone-500 transition-colors hover:bg-stone-900/5 hover:text-stone-900"
           >
             Intake forms
           </a>
-        </span>
+        </nav>
       </div>
 
-      <h2 className="mt-8 text-lg font-semibold">Events</h2>
-
-      <ul className="mt-3 space-y-3">
-        {events.length === 0 ? (
-          <li>
-            <Card className="p-6 text-center text-stone-500">
-              No events yet — create one below.
-            </Card>
-          </li>
-        ) : (
-          events.map((e) => (
-            <li key={e.id}>
-              <a href={`/o/${orgId}/e/${e.id}`} className="group block">
-                <Card className="flex items-center justify-between p-4 transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md">
-                  <span className="min-w-0">
-                    <span className="block truncate font-medium text-stone-900">
-                      {e.title}
-                    </span>
-                    <span className="mt-0.5 block text-sm text-stone-500">
-                      {formatDateTime(e.startsAt)}
-                      {e.location ? ` · ${e.location}` : ""}
-                    </span>
-                  </span>
-                  <span className="ml-3 flex shrink-0 items-center gap-3">
-                    <Badge>
-                      {e._count.registrations}{" "}
-                      {e._count.registrations === 1 ? "person" : "people"}
-                    </Badge>
-                    <span
-                      aria-hidden
-                      className="text-stone-300 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-stone-500"
-                    >
-                      →
-                    </span>
-                  </span>
-                </Card>
-              </a>
-            </li>
-          ))
-        )}
-      </ul>
-
-      <Card className="mt-8 p-5">
-        <h3 className="font-medium">New event</h3>
-        <form action={createEvent} className="mt-3 space-y-3">
-          <Input name="title" required placeholder="Event title" />
-          <Input name="location" placeholder="Location (optional)" />
-          <label className="block text-sm text-stone-600">
-            Starts at
-            <Input name="startsAt" type="datetime-local" required className="mt-1" />
-          </label>
-          <Button className="w-full">Create event</Button>
-        </form>
-      </Card>
-
-      {/* --- Manage ------------------------------------------------------------ */}
-      {role === "OWNER" || role === "ADMIN" ? (
-        <Card className="mt-10 border-red-100 p-5">
-          <h3 className="font-medium">Manage organization</h3>
-          <form action={renameOrg} className="mt-3 flex gap-2">
-            <Input name="name" key={org?.name} defaultValue={org?.name ?? ""} required />
-            <SaveButton className="shrink-0" savedLabel="Renamed ✓">Rename</SaveButton>
-          </form>
-          {role === "OWNER" && org ? (
-            <div className="mt-4 border-t border-stone-100 pt-4">
-              <p className="text-sm font-medium text-red-700">Delete organization</p>
-              <p className="mt-1 text-xs leading-relaxed text-stone-500">
-                Permanently deletes <strong>everything</strong>: {org._count.events}{" "}
-                events, {org._count.participants} participants,{" "}
-                {org._count.healthReadings} health readings, all forms,
-                submissions, photos, programs, and invites. This cannot be
-                undone.
-              </p>
-              <form action={deleteOrg} className="mt-3">
-                <TypedDeleteConfirm
-                  expected={org.name}
-                  label="Delete this organization forever"
+      <div className="mt-8">
+        <Rollout
+          heading={<h2 className="text-lg font-semibold">Events</h2>}
+          label="+ Add event"
+          accent
+        >
+          <Card className="p-4">
+            <form action={createEvent} className="space-y-3">
+              <Input name="title" required placeholder="Event title" />
+              <Input name="location" placeholder="Location (optional)" />
+              <label className="block text-sm text-stone-600">
+                Starts at
+                <Input
+                  name="startsAt"
+                  type="datetime-local"
+                  required
+                  className="mt-1"
                 />
-              </form>
-            </div>
-          ) : null}
-        </Card>
-      ) : null}
+              </label>
+              <Button className="w-full">Create event</Button>
+            </form>
+          </Card>
+        </Rollout>
+
+        <ul className="mt-3 space-y-3">
+          {events.length === 0 ? (
+            <li>
+              <Card className="p-6 text-center text-stone-500">
+                No events yet — tap “+ Add event” to create your first one.
+              </Card>
+            </li>
+          ) : (
+            events.map((e) => (
+              <li key={e.id}>
+                <a href={`/o/${orgId}/e/${e.id}`} className="group block">
+                  <Card className="flex items-center justify-between p-4 transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md">
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-stone-900">
+                        {e.title}
+                      </span>
+                      <span className="mt-0.5 block text-sm text-stone-500">
+                        {formatDateTime(e.startsAt)}
+                        {e.location ? ` · ${e.location}` : ""}
+                      </span>
+                    </span>
+                    <span className="ml-3 flex shrink-0 items-center gap-3">
+                      <Badge>
+                        {e._count.registrations}{" "}
+                        {e._count.registrations === 1 ? "person" : "people"}
+                      </Badge>
+                      <span
+                        aria-hidden
+                        className="text-stone-300 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-stone-500"
+                      >
+                        →
+                      </span>
+                    </span>
+                  </Card>
+                </a>
+              </li>
+            ))
+          )}
+        </ul>
+      </div>
     </PageShell>
   );
 }

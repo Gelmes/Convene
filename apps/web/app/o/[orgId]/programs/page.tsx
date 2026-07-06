@@ -3,6 +3,7 @@ import { createProgramSchema } from "@convene/schemas";
 import { revalidatePath } from "next/cache";
 import { requireMembership } from "@/lib/session";
 import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
+import { Rollout } from "@/components/rollout";
 
 export default async function ProgramsPage({
   params,
@@ -29,16 +30,33 @@ export default async function ProgramsPage({
   return (
     <PageShell>
       <BackLink href={`/o/${orgId}`}>{org?.name ?? "Organization"}</BackLink>
-      <h1 className="mt-3 text-2xl font-bold tracking-tight">Programs</h1>
-      <p className="mt-1 text-sm text-stone-500">
-        Multi-stage journeys you move participants through.
-      </p>
+      <div className="mt-3">
+        <Rollout
+          heading={
+            <div className="min-w-0">
+              <h1 className="truncate text-2xl font-bold tracking-tight">Programs</h1>
+              <p className="mt-1 text-sm text-stone-500">
+                Multi-stage journeys you move participants through.
+              </p>
+            </div>
+          }
+          label="+ New program"
+          accent
+        >
+          <Card className="p-4">
+            <form action={createProgram} className="flex gap-2">
+              <Input name="name" required placeholder="e.g. Breathwork Foundations" />
+              <Button className="shrink-0">Create</Button>
+            </form>
+          </Card>
+        </Rollout>
+      </div>
 
       <ul className="mt-6 space-y-3">
         {programs.length === 0 ? (
           <li>
             <Card className="p-6 text-center text-stone-500">
-              No programs yet — create your first one below.
+              No programs yet — tap “+ New program” to create your first one.
             </Card>
           </li>
         ) : (
@@ -71,13 +89,6 @@ export default async function ProgramsPage({
         )}
       </ul>
 
-      <Card className="mt-8 p-5">
-        <h3 className="font-medium">New program</h3>
-        <form action={createProgram} className="mt-3 flex gap-2">
-          <Input name="name" required placeholder="e.g. Breathwork Foundations" />
-          <Button className="shrink-0">Create</Button>
-        </form>
-      </Card>
     </PageShell>
   );
 }

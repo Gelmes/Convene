@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireMembership } from "@/lib/session";
 import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm";
+import { Rollout } from "@/components/rollout";
 import { SaveButton } from "@/components/save-button";
 
 const selectCls =
@@ -165,18 +166,90 @@ export default async function ProgramDetail({
   return (
     <PageShell>
       <BackLink href={`/o/${orgId}/programs`}>Programs</BackLink>
-      <h1 className="mt-3 text-2xl font-bold tracking-tight">{program.name}</h1>
+
+      <div className="mt-3">
+        <Rollout
+          heading={
+            <h1 className="min-w-0 truncate text-2xl font-bold tracking-tight">
+              {program.name}
+            </h1>
+          }
+          label="Edit"
+        >
+          <Card className="space-y-4 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-medium text-stone-700">Advancement</h3>
+                <p className="mt-0.5 max-w-xs text-xs text-stone-400">
+                  {program.advanceMode === "AUTO"
+                    ? "Participants advance on their own when a stage's requirements are met."
+                    : "Requirements only suggest (Ready ✓) — you confirm every advance."}
+                </p>
+              </div>
+              <form action={setAdvanceMode} className="flex items-center gap-1.5">
+                <select
+                  name="advanceMode"
+                  key={program.advanceMode}
+                  defaultValue={program.advanceMode}
+                  className={selectCls}
+                >
+                  <option value="MANUAL">Manual — I confirm</option>
+                  <option value="AUTO">Automatic</option>
+                </select>
+                <SaveButton variant="ghost" className="px-2.5 py-1.5 text-xs">
+                  Save
+                </SaveButton>
+              </form>
+            </div>
+            <form action={renameProgram} className="flex gap-2 border-t border-stone-100 pt-4">
+              <Input name="name" key={program.name} defaultValue={program.name} required />
+              <SaveButton className="shrink-0" savedLabel="Renamed ✓">
+                Rename
+              </SaveButton>
+            </form>
+            <form action={deleteProgram} className="border-t border-stone-100 pt-3">
+              <ConfirmButton
+                message={`Delete “${program.name}”? This permanently removes its ${program.stages.length} stage${program.stages.length === 1 ? "" : "s"} and ${enrollments.length} enrollment${enrollments.length === 1 ? "" : "s"} (all progress history). Participants themselves — and their events, readings, and intake — are NOT deleted. Linked events lose their stage link.`}
+                className="w-full text-red-600 hover:bg-red-50 hover:text-red-700"
+              >
+                Delete program…
+              </ConfirmButton>
+            </form>
+          </Card>
+        </Rollout>
+      </div>
 
       {/* --- Stages ----------------------------------------------------------- */}
-      <h2 className="mt-8 text-lg font-semibold">
-        Stages{" "}
-        <span className="font-normal text-stone-400">({program.stages.length})</span>
-      </h2>
+      <div className="mt-8">
+        <Rollout
+          heading={
+            <h2 className="text-lg font-semibold">
+              Stages{" "}
+              <span className="font-normal text-stone-400">
+                ({program.stages.length})
+              </span>
+            </h2>
+          }
+          label="+ Add stage"
+          accent
+        >
+          <Card className="p-4">
+            <form action={addStage} className="flex gap-2">
+              <Input name="name" required placeholder="New stage, e.g. Level 1" />
+              <Button className="shrink-0">Add</Button>
+            </form>
+            <p className="mt-2 text-xs text-stone-400">
+              Tip: link an event to a stage from the event&apos;s settings —
+              attending it marks the participant ready to advance.
+            </p>
+          </Card>
+        </Rollout>
+      </div>
       <ul className="mt-3 space-y-2">
         {program.stages.length === 0 ? (
           <li>
             <Card className="p-6 text-center text-stone-500">
-              No stages yet — add the steps of this journey below.
+              No stages yet — tap “+ Add stage” to define this journey.
             </Card>
           </li>
         ) : (
@@ -254,54 +327,53 @@ export default async function ProgramDetail({
           ))
         )}
       </ul>
-      <Card className="mt-4 p-4">
-        <form action={addStage} className="flex gap-2">
-          <Input name="name" required placeholder="New stage, e.g. Level 1" />
-          <Button className="shrink-0">Add stage</Button>
-        </form>
-        <p className="mt-2 text-xs text-stone-400">
-          Tip: link an event to a stage from the event&apos;s settings — attending
-          it marks the participant ready to advance.
-        </p>
-      </Card>
-
-      <Card className="mt-4 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-medium text-stone-700">Advancement</h3>
-            <p className="mt-0.5 max-w-xs text-xs text-stone-400">
-              {program.advanceMode === "AUTO"
-                ? "Participants advance on their own when a stage's requirements are met."
-                : "Requirements only suggest (Ready ✓) — you confirm every advance."}
-            </p>
-          </div>
-          <form action={setAdvanceMode} className="flex items-center gap-1.5">
-            <select
-              name="advanceMode"
-              key={program.advanceMode}
-              defaultValue={program.advanceMode}
-              className={selectCls}
-            >
-              <option value="MANUAL">Manual — I confirm</option>
-              <option value="AUTO">Automatic</option>
-            </select>
-            <SaveButton variant="ghost" className="px-2.5 py-1.5 text-xs">
-              Save
-            </SaveButton>
-          </form>
-        </div>
-      </Card>
-
       {/* --- Enrolled participants --------------------------------------------- */}
-      <h2 className="mt-10 text-lg font-semibold">
-        Participants{" "}
-        <span className="font-normal text-stone-400">({enrollments.length})</span>
-      </h2>
+      <div className="mt-10">
+        <Rollout
+          heading={
+            <h2 className="text-lg font-semibold">
+              Participants{" "}
+              <span className="font-normal text-stone-400">
+                ({enrollments.length})
+              </span>
+            </h2>
+          }
+          label="+ Enroll"
+          accent
+        >
+          {enrollable.length > 0 ? (
+            <Card className="p-4">
+              <form action={enroll} className="flex gap-2">
+                <select
+                  name="participantId"
+                  required
+                  defaultValue=""
+                  className={`${selectCls} flex-1`}
+                >
+                  <option value="" disabled>
+                    Choose a participant…
+                  </option>
+                  {enrollable.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.firstName} {p.lastName ?? ""}
+                    </option>
+                  ))}
+                </select>
+                <Button className="shrink-0">Enroll</Button>
+              </form>
+            </Card>
+          ) : (
+            <Card className="p-4 text-sm text-stone-500">
+              Everyone in your organization is already enrolled.
+            </Card>
+          )}
+        </Rollout>
+      </div>
       <ul className="mt-3 space-y-3">
         {enrollments.length === 0 ? (
           <li>
             <Card className="p-6 text-center text-stone-500">
-              Nobody enrolled yet — add someone below.
+              Nobody enrolled yet — tap “+ Enroll” to add someone.
             </Card>
           </li>
         ) : (
@@ -444,40 +516,6 @@ export default async function ProgramDetail({
         )}
       </ul>
 
-      {enrollable.length > 0 ? (
-        <Card className="mt-4 p-4">
-          <form action={enroll} className="flex gap-2">
-            <select name="participantId" required defaultValue="" className={`${selectCls} flex-1`}>
-              <option value="" disabled>
-                Choose a participant…
-              </option>
-              {enrollable.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.firstName} {p.lastName ?? ""}
-                </option>
-              ))}
-            </select>
-            <Button className="shrink-0">Enroll</Button>
-          </form>
-        </Card>
-      ) : null}
-
-      {/* --- Manage ------------------------------------------------------------ */}
-      <Card className="mt-10 border-red-100 p-5">
-        <h3 className="font-medium">Manage program</h3>
-        <form action={renameProgram} className="mt-3 flex gap-2">
-          <Input name="name" key={program.name} defaultValue={program.name} required />
-          <SaveButton className="shrink-0" savedLabel="Renamed ✓">Rename</SaveButton>
-        </form>
-        <form action={deleteProgram} className="mt-3 border-t border-stone-100 pt-3">
-          <ConfirmButton
-            message={`Delete “${program.name}”? This permanently removes its ${program.stages.length} stage${program.stages.length === 1 ? "" : "s"} and ${enrollments.length} enrollment${enrollments.length === 1 ? "" : "s"} (all progress history). Participants themselves — and their events, readings, and intake — are NOT deleted. Linked events lose their stage link.`}
-            className="w-full text-red-600 hover:bg-red-50 hover:text-red-700"
-          >
-            Delete program…
-          </ConfirmButton>
-        </form>
-      </Card>
     </PageShell>
   );
 }

@@ -3,6 +3,7 @@ import { createFormTemplateSchema } from "@convene/schemas";
 import { revalidatePath } from "next/cache";
 import { requireMembership } from "@/lib/session";
 import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
+import { Rollout } from "@/components/rollout";
 
 export default async function FormsPage({
   params,
@@ -31,16 +32,35 @@ export default async function FormsPage({
   return (
     <PageShell>
       <BackLink href={`/o/${orgId}`}>{org?.name ?? "Organization"}</BackLink>
-      <h1 className="mt-3 text-2xl font-bold tracking-tight">Intake forms</h1>
-      <p className="mt-1 text-sm text-stone-500">
-        Custom questions participants answer when they register.
-      </p>
+      <div className="mt-3">
+        <Rollout
+          heading={
+            <div className="min-w-0">
+              <h1 className="truncate text-2xl font-bold tracking-tight">
+                Intake forms
+              </h1>
+              <p className="mt-1 text-sm text-stone-500">
+                Custom questions participants answer when they register.
+              </p>
+            </div>
+          }
+          label="+ New form"
+          accent
+        >
+          <Card className="p-4">
+            <form action={createForm} className="flex gap-2">
+              <Input name="name" required placeholder="e.g. Health intake" />
+              <Button className="shrink-0">Create</Button>
+            </form>
+          </Card>
+        </Rollout>
+      </div>
 
       <ul className="mt-6 space-y-3">
         {forms.length === 0 ? (
           <li>
             <Card className="p-6 text-center text-stone-500">
-              No forms yet — create your first one below.
+              No forms yet — tap “+ New form” to create your first one.
             </Card>
           </li>
         ) : (
@@ -74,13 +94,6 @@ export default async function FormsPage({
         )}
       </ul>
 
-      <Card className="mt-8 p-5">
-        <h3 className="font-medium">New form</h3>
-        <form action={createForm} className="mt-3 flex gap-2">
-          <Input name="name" required placeholder="e.g. Health intake" />
-          <Button className="shrink-0">Create</Button>
-        </form>
-      </Card>
     </PageShell>
   );
 }

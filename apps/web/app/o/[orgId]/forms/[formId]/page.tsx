@@ -7,6 +7,7 @@ import { parseQuestions } from "@/lib/forms";
 import { requireMembership } from "@/lib/session";
 import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm";
+import { Rollout } from "@/components/rollout";
 import { SaveButton } from "@/components/save-button";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -124,26 +125,110 @@ export default async function FormBuilder({
     <PageShell>
       <BackLink href={`/o/${orgId}/forms`}>Intake forms</BackLink>
 
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <h1 className="min-w-0 truncate text-2xl font-bold tracking-tight">
-          {form.name}
-        </h1>
-        <span className="flex shrink-0 items-center gap-2">
-          <Badge>
-            {form.status} · v{form.version}
-          </Badge>
-        </span>
+      <div className="mt-3">
+        <Rollout
+          heading={
+            <span className="flex min-w-0 items-center gap-3">
+              <h1 className="min-w-0 truncate text-2xl font-bold tracking-tight">
+                {form.name}
+              </h1>
+              <Badge>
+                {form.status} · v{form.version}
+              </Badge>
+            </span>
+          }
+          label="Edit"
+        >
+          <Card className="p-4">
+            <form action={renameForm} className="flex gap-2">
+              <Input name="name" key={form.name} defaultValue={form.name} required />
+              <SaveButton className="shrink-0" savedLabel="Renamed ✓">
+                Rename
+              </SaveButton>
+            </form>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-stone-100 pt-3">
+              <form action={toggleArchive}>
+                <Button variant="ghost" className="px-3 py-1.5 text-sm">
+                  {form.status === "ARCHIVED" ? "Unarchive (re-publish)" : "Archive"}
+                </Button>
+              </form>
+              {form._count.submissions > 0 ? (
+                <p className="text-xs text-stone-400">
+                  Can&apos;t delete — {form._count.submissions}{" "}
+                  {form._count.submissions === 1 ? "submission" : "submissions"}{" "}
+                  would be lost. Archive hides it from pickers while keeping the
+                  data.
+                </p>
+              ) : (
+                <form action={deleteForm}>
+                  <ConfirmButton
+                    message={`Delete “${form.name}”? It has no submissions, so nothing else is affected. Events using it as intake will simply have no form.`}
+                    className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 hover:text-red-700"
+                  >
+                    Delete form…
+                  </ConfirmButton>
+                </form>
+              )}
+            </div>
+          </Card>
+        </Rollout>
       </div>
 
-      <h2 className="mt-8 text-lg font-semibold">
-        Questions <span className="font-normal text-stone-400">({questions.length})</span>
-      </h2>
+      <div className="mt-8">
+        <Rollout
+          heading={
+            <h2 className="text-lg font-semibold">
+              Questions{" "}
+              <span className="font-normal text-stone-400">
+                ({questions.length})
+              </span>
+            </h2>
+          }
+          label="+ Add question"
+          accent
+        >
+          <Card className="p-4">
+            <form action={addQuestion} className="space-y-3">
+              <Input
+                name="label"
+                required
+                placeholder="Question, e.g. Any medical conditions?"
+              />
+              <div className="flex flex-wrap items-center gap-3">
+                <select
+                  name="type"
+                  className="rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-sm text-stone-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                >
+                  {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                <label className="flex items-center gap-2 text-sm text-stone-600">
+                  <input
+                    type="checkbox"
+                    name="required"
+                    className="h-4 w-4 rounded border-stone-300 accent-emerald-600"
+                  />
+                  Required
+                </label>
+              </div>
+              <Input
+                name="options"
+                placeholder="Dropdown options, comma-separated (only for Dropdown)"
+              />
+              <Button className="w-full">Add question</Button>
+            </form>
+          </Card>
+        </Rollout>
+      </div>
 
       <ul className="mt-3 space-y-2">
         {questions.length === 0 ? (
           <li>
             <Card className="p-6 text-center text-stone-500">
-              No questions yet — add your first one below.
+              No questions yet — tap “+ Add question” to write the first one.
             </Card>
           </li>
         ) : (
@@ -172,38 +257,6 @@ export default async function FormBuilder({
         )}
       </ul>
 
-      <Card className="mt-8 p-5">
-        <h3 className="font-medium">Add question</h3>
-        <form action={addQuestion} className="mt-3 space-y-3">
-          <Input name="label" required placeholder="Question, e.g. Any medical conditions?" />
-          <div className="flex flex-wrap items-center gap-3">
-            <select
-              name="type"
-              className="rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-sm text-stone-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-            >
-              {Object.entries(TYPE_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <label className="flex items-center gap-2 text-sm text-stone-600">
-              <input
-                type="checkbox"
-                name="required"
-                className="h-4 w-4 rounded border-stone-300 accent-emerald-600"
-              />
-              Required
-            </label>
-          </div>
-          <Input
-            name="options"
-            placeholder="Dropdown options, comma-separated (only for Dropdown)"
-          />
-          <Button className="w-full">Add question</Button>
-        </form>
-      </Card>
-
       <Card className="mt-4 p-5">
         <div className="flex items-center justify-between gap-4">
           <p className="text-sm text-stone-500">
@@ -219,37 +272,6 @@ export default async function FormBuilder({
         </div>
       </Card>
 
-      {/* --- Manage ------------------------------------------------------------ */}
-      <Card className="mt-10 border-red-100 p-5">
-        <h3 className="font-medium">Manage form</h3>
-        <form action={renameForm} className="mt-3 flex gap-2">
-          <Input name="name" key={form.name} defaultValue={form.name} required />
-          <SaveButton className="shrink-0" savedLabel="Renamed ✓">Rename</SaveButton>
-        </form>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-stone-100 pt-3">
-          <form action={toggleArchive}>
-            <Button variant="ghost" className="px-3 py-1.5 text-sm">
-              {form.status === "ARCHIVED" ? "Unarchive (re-publish)" : "Archive"}
-            </Button>
-          </form>
-          {form._count.submissions > 0 ? (
-            <p className="text-xs text-stone-400">
-              Can&apos;t delete — {form._count.submissions}{" "}
-              {form._count.submissions === 1 ? "submission" : "submissions"} would
-              be lost. Archive hides it from pickers while keeping the data.
-            </p>
-          ) : (
-            <form action={deleteForm}>
-              <ConfirmButton
-                message={`Delete “${form.name}”? It has no submissions, so nothing else is affected. Events using it as intake will simply have no form.`}
-                className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 hover:text-red-700"
-              >
-                Delete form…
-              </ConfirmButton>
-            </form>
-          )}
-        </div>
-      </Card>
     </PageShell>
   );
 }
