@@ -19,7 +19,7 @@ function cx(...parts: Array<string | false | null | undefined>): string {
 }
 
 const buttonBase =
-  "inline-flex items-center justify-center gap-2 rounded-xl font-medium " +
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl font-medium " +
   "transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 " +
   "focus-visible:ring-emerald-500/60 focus-visible:ring-offset-2 " +
   "active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none";

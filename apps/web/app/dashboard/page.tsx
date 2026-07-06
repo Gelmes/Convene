@@ -61,7 +61,7 @@ export default async function Dashboard() {
         <span className="flex items-center gap-1">
           <Link
             href="/me"
-            className="rounded-xl px-3 py-1.5 text-sm font-medium text-stone-500 transition-colors hover:bg-stone-900/5 hover:text-stone-900"
+            className="whitespace-nowrap rounded-xl px-3 py-1.5 text-sm font-medium text-stone-500 transition-colors hover:bg-stone-900/5 hover:text-stone-900"
           >
             My participation
           </Link>
@@ -85,7 +85,7 @@ export default async function Dashboard() {
               </p>
             </div>
           }
-          label="+ New organization"
+          label="+ New"
           accent
         >
           <Card className="p-4">
