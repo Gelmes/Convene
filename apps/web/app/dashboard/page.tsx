@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { slugify } from "@/lib/slug";
 import { Badge, Brand, Button, Card, Input, PageShell } from "@/components/ui";
+import { Rollout } from "@/components/rollout";
 
 export default async function Dashboard() {
   const session = await auth();
@@ -73,17 +74,35 @@ export default async function Dashboard() {
       </div>
 
       <div className="mt-10">
-        <h1 className="text-2xl font-bold tracking-tight">Your organizations</h1>
-        <p className="mt-1 text-sm text-stone-500">
-          Signed in as {session?.user?.email}
-        </p>
+        <Rollout
+          heading={
+            <div className="min-w-0">
+              <h1 className="truncate text-2xl font-bold tracking-tight">
+                Your organizations
+              </h1>
+              <p className="mt-1 text-sm text-stone-500">
+                Signed in as {session?.user?.email}
+              </p>
+            </div>
+          }
+          label="+ New organization"
+          accent
+        >
+          <Card className="p-4">
+            <form action={createOrg} className="flex gap-2">
+              <Input name="name" required placeholder="e.g. The Temple of Eden" />
+              <Button className="shrink-0">Create</Button>
+            </form>
+          </Card>
+        </Rollout>
       </div>
 
       <ul className="mt-6 space-y-3">
         {memberships.length === 0 ? (
           <li>
             <Card className="p-6 text-center text-stone-500">
-              No organizations yet — create your first one below.
+              No organizations yet — tap “+ New organization” to create your
+              first one.
             </Card>
           </li>
         ) : (
@@ -110,13 +129,6 @@ export default async function Dashboard() {
         )}
       </ul>
 
-      <Card className="mt-8 p-5">
-        <h3 className="font-medium">New organization</h3>
-        <form action={createOrg} className="mt-3 flex gap-2">
-          <Input name="name" required placeholder="e.g. The Temple of Eden" />
-          <Button className="shrink-0">Create</Button>
-        </form>
-      </Card>
     </PageShell>
   );
 }
