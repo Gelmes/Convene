@@ -40,6 +40,7 @@ export async function getPortalData(userId: string, email?: string | null) {
                 select: {
                   id: true,
                   storageKey: true,
+                  thumbKey: true,
                   caption: true,
                   contentType: true,
                 },

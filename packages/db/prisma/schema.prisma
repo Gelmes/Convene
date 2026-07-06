@@ -139,7 +139,8 @@ model Photo {
   id               String          @id @default(cuid())
   organizationId   String
   eventId          String
-  storageKey       String          @unique // R2 object key
+  storageKey       String          @unique // R2 object key (original)
+  thumbKey         String? // R2 key of the ~400px webp thumbnail (null = pre-thumbnail upload)
   contentType      String
   size             Int // bytes
   caption          String?

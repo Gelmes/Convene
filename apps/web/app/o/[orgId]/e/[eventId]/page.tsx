@@ -38,6 +38,8 @@ export default async function EventDetail({
     photos.map(async (p) => ({
       ...p,
       url: await r2PresignGet(p.storageKey),
+      // Grids load the small webp; clicking opens the full original.
+      thumbUrl: await r2PresignGet(p.thumbKey ?? p.storageKey),
     })),
   );
 
@@ -70,7 +72,10 @@ export default async function EventDetail({
     const { userId } = await requireMembership(orgId);
     const db = createTenantClient(orgId, userId);
     const photo = await db.photos.delete(String(formData.get("photoId")));
-    if (photo) await r2Delete(photo.storageKey).catch(() => {});
+    if (photo) {
+      await r2Delete(photo.storageKey).catch(() => {});
+      if (photo.thumbKey) await r2Delete(photo.thumbKey).catch(() => {});
+    }
     revalidatePath(`/o/${orgId}/e/${eventId}`);
   }
 
@@ -138,7 +143,17 @@ export default async function EventDetail({
       <Card className="mt-8 p-5">
         <div className="flex items-center justify-between gap-3">
           <h3 className="font-medium">Photos</h3>
-          {photos.length > 0 ? <Badge>{photos.length}</Badge> : null}
+          <span className="flex items-center gap-2">
+            {photos.length > 0 ? (
+              <a
+                href={`/api/o/${orgId}/e/${eventId}/photos/download`}
+                className="rounded-xl px-2.5 py-1 text-xs font-medium text-stone-500 transition-colors hover:bg-stone-900/5 hover:text-stone-900"
+              >
+                ↓ Download all
+              </a>
+            ) : null}
+            {photos.length > 0 ? <Badge>{photos.length}</Badge> : null}
+          </span>
         </div>
         <p className="mt-1 text-xs text-stone-400">
           Visible to participants who attended this event (and to your team).
@@ -150,13 +165,15 @@ export default async function EventDetail({
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                 {photoUrls.map((p) => (
                   <div key={p.id} className="group relative aspect-square">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={p.url}
-                      alt={p.caption ?? "Event photo"}
-                      className="h-full w-full rounded-xl object-cover"
-                      loading="lazy"
-                    />
+                    <a href={p.url} target="_blank" rel="noreferrer">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={p.thumbUrl}
+                        alt={p.caption ?? "Event photo"}
+                        className="h-full w-full rounded-xl object-cover"
+                        loading="lazy"
+                      />
+                    </a>
                     <form
                       action={deletePhoto}
                       className="absolute right-1.5 top-1.5 opacity-0 transition-opacity group-hover:opacity-100"

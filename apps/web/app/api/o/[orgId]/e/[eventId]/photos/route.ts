@@ -50,28 +50,57 @@ export async function POST(
 
   const db = createTenantClient(orgId, userId);
   const ext = file.name.includes(".") ? file.name.split(".").pop() : "bin";
-  const storageKey = `${orgId}/${eventId}/${randomUUID()}.${ext}`;
+  const baseKey = `${orgId}/${eventId}/${randomUUID()}`;
+  const storageKey = `${baseKey}.${ext}`;
+  const original = await file.arrayBuffer();
 
   try {
-    await r2Put(storageKey, await file.arrayBuffer(), file.type);
+    await r2Put(storageKey, original, file.type);
   } catch (err) {
     const message = err instanceof Error ? err.message : "storage upload failed";
     console.error("photo upload:", message);
     return NextResponse.json({ error: message }, { status: 502 });
   }
 
+  // Thumbnail for fast galleries. Best-effort: if sharp can't decode the
+  // format (e.g. HEIC), the photo simply has no thumb and grids fall back to
+  // the original.
+  let thumbKey: string | null = null;
+  try {
+    const sharp = (await import("sharp")).default;
+    const thumb = await sharp(Buffer.from(original))
+      .rotate() // respect EXIF orientation
+      .resize(400, 400, { fit: "cover", position: "attention" })
+      .webp({ quality: 75 })
+      .toBuffer();
+    thumbKey = `${baseKey}.thumb.webp`;
+    await r2Put(
+      thumbKey,
+      thumb.buffer.slice(thumb.byteOffset, thumb.byteOffset + thumb.byteLength) as ArrayBuffer,
+      "image/webp",
+    );
+  } catch (err) {
+    console.warn(
+      "thumbnail generation skipped:",
+      err instanceof Error ? err.message : err,
+    );
+    thumbKey = null;
+  }
+
   try {
     const photo = await db.photos.create({
       eventId,
       storageKey,
+      thumbKey: thumbKey ?? undefined,
       contentType: file.type,
       size: file.size,
     });
     return NextResponse.json({ id: photo.id });
   } catch (err) {
-    // DB rejected (e.g. event not in this org) — don't leave an orphan object.
+    // DB rejected (e.g. event not in this org) — don't leave orphan objects.
     const { r2Delete } = await import("@/lib/r2");
     await r2Delete(storageKey).catch(() => {});
+    if (thumbKey) await r2Delete(thumbKey).catch(() => {});
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "upload failed" },
       { status: 400 },

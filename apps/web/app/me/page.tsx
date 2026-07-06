@@ -21,10 +21,16 @@ export default async function Portal() {
   const profiles = await getPortalData(userId, session?.user?.email);
 
   // Presign photo URLs for every attended event (bucket is private).
+  // Thumbnails render the grid; originals open on click.
   const photoUrls = new Map<string, string>();
   if (r2Configured()) {
     const keys = profiles.flatMap((p) =>
-      p.registrations.flatMap((reg) => reg.event.photos.map((ph) => ph.storageKey)),
+      p.registrations.flatMap((reg) =>
+        reg.event.photos.flatMap((ph) => [
+          ph.storageKey,
+          ...(ph.thumbKey ? [ph.thumbKey] : []),
+        ]),
+      ),
     );
     await Promise.all(
       keys.map(async (key) => {
@@ -92,29 +98,38 @@ export default async function Portal() {
                         <Badge>{STATUS_LABELS[reg.status] ?? reg.status}</Badge>
                       </div>
                       {reg.event.photos.length > 0 ? (
-                        <div className="mt-2 grid grid-cols-4 gap-1.5 sm:grid-cols-6">
-                          {reg.event.photos.map((ph) => {
-                            const url = photoUrls.get(ph.storageKey);
-                            if (!url) return null;
-                            return (
-                              <a
-                                key={ph.id}
-                                href={url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="block aspect-square overflow-hidden rounded-lg"
-                              >
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={url}
-                                  alt={ph.caption ?? "Event photo"}
-                                  loading="lazy"
-                                  className="h-full w-full object-cover transition-transform duration-200 hover:scale-105"
-                                />
-                              </a>
-                            );
-                          })}
-                        </div>
+                        <>
+                          <div className="mt-2 grid grid-cols-4 gap-1.5 sm:grid-cols-6">
+                            {reg.event.photos.map((ph) => {
+                              const full = photoUrls.get(ph.storageKey);
+                              const thumb = photoUrls.get(ph.thumbKey ?? ph.storageKey);
+                              if (!full || !thumb) return null;
+                              return (
+                                <a
+                                  key={ph.id}
+                                  href={full}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="block aspect-square overflow-hidden rounded-lg"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={thumb}
+                                    alt={ph.caption ?? "Event photo"}
+                                    loading="lazy"
+                                    className="h-full w-full object-cover transition-transform duration-200 hover:scale-105"
+                                  />
+                                </a>
+                              );
+                            })}
+                          </div>
+                          <a
+                            href={`/api/o/${p.organization.id}/e/${reg.event.id}/photos/download`}
+                            className="mt-2 inline-block text-xs font-medium text-stone-500 underline-offset-2 transition-colors hover:text-emerald-700 hover:underline"
+                          >
+                            ↓ Download all photos
+                          </a>
+                        </>
                       ) : null}
                     </li>
                   ))}

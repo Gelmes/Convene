@@ -196,12 +196,14 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
       async delete(eventId: string): Promise<string[]> {
         const photos = await prisma.photo.findMany({
           where: { eventId, organizationId },
-          select: { storageKey: true },
+          select: { storageKey: true, thumbKey: true },
         });
         const result = await prisma.event.deleteMany({
           where: { id: eventId, organizationId },
         });
-        return result.count > 0 ? photos.map((p) => p.storageKey) : [];
+        return result.count > 0
+          ? photos.flatMap((p) => [p.storageKey, ...(p.thumbKey ? [p.thumbKey] : [])])
+          : [];
       },
       /** Link this event to a program stage (attending it satisfies the stage). */
       async setStage(eventId: string, stageId: string | null) {
@@ -557,6 +559,7 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
       async create(input: {
         eventId: string;
         storageKey: string;
+        thumbKey?: string;
         contentType: string;
         size: number;
         caption?: string;
@@ -572,6 +575,7 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
             organizationId,
             eventId: input.eventId,
             storageKey: input.storageKey,
+            thumbKey: input.thumbKey ?? null,
             contentType: input.contentType,
             size: input.size,
             caption: input.caption ?? null,

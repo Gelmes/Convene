@@ -64,11 +64,15 @@ export default async function OrgHome({
     if (!org || formData.get("confirm") !== org.name) return;
     const photos = await prisma.photo.findMany({
       where: { organizationId: orgId },
-      select: { storageKey: true },
+      select: { storageKey: true, thumbKey: true },
     });
     await prisma.organization.delete({ where: { id: orgId } });
     const { r2Delete } = await import("@/lib/r2");
-    await Promise.all(photos.map((p) => r2Delete(p.storageKey).catch(() => {})));
+    const keys = photos.flatMap((p) => [
+      p.storageKey,
+      ...(p.thumbKey ? [p.thumbKey] : []),
+    ]);
+    await Promise.all(keys.map((key) => r2Delete(key).catch(() => {})));
     redirect("/dashboard");
   }
 
