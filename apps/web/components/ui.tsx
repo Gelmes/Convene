@@ -129,6 +129,40 @@ export function BackLink({ href, children }: { href: string; children: ReactNode
   );
 }
 
+/**
+ * Segmented tab bar driven by links (?tab=…) so server pages stay server pages.
+ * The first tab is the default and links to the bare path.
+ */
+export function TabBar({
+  base,
+  active,
+  tabs,
+}: {
+  base: string;
+  active: string;
+  tabs: Array<{ key: string; label: ReactNode }>;
+}) {
+  return (
+    <nav className="mt-6 flex gap-1 rounded-2xl bg-stone-200/50 p-1">
+      {tabs.map((t, i) => (
+        <a
+          key={t.key}
+          href={i === 0 ? base : `${base}?tab=${t.key}`}
+          aria-current={active === t.key ? "page" : undefined}
+          className={cx(
+            "flex-1 rounded-xl px-3 py-2 text-center text-sm font-medium transition-all duration-150",
+            active === t.key
+              ? "bg-white text-stone-900 shadow-sm"
+              : "text-stone-500 hover:text-stone-800",
+          )}
+        >
+          {t.label}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
 /** Wordmark used across screens. */
 export function Brand({ className }: { className?: string }) {
   return (

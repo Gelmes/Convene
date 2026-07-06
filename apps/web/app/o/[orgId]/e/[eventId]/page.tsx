@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { requireMembership } from "@/lib/session";
 import { formatDateTime } from "@/lib/format";
 import { r2Configured, r2Delete, r2PresignGet } from "@/lib/r2";
-import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
+import { BackLink, Badge, Button, Card, Input, PageShell, TabBar } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm";
 import { SaveButton } from "@/components/save-button";
 import { CopyField } from "@/components/copy-field";
@@ -14,10 +14,15 @@ import { PhotoUploader } from "@/components/photo-uploader";
 
 export default async function EventDetail({
   params,
+  searchParams,
 }: {
   params: Promise<{ orgId: string; eventId: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { orgId, eventId } = await params;
+  const sp = await searchParams;
+  const tab =
+    sp.tab === "photos" || sp.tab === "settings" ? sp.tab : "participants";
   const { userId } = await requireMembership(orgId);
 
   const db = createTenantClient(orgId, userId);
@@ -34,14 +39,18 @@ export default async function EventDetail({
 
   const photosEnabled = r2Configured();
   const photos = photosEnabled ? await db.photos.listForEvent(eventId) : [];
-  const photoUrls = await Promise.all(
-    photos.map(async (p) => ({
-      ...p,
-      url: await r2PresignGet(p.storageKey),
-      // Grids load the small webp; clicking opens the full original.
-      thumbUrl: await r2PresignGet(p.thumbKey ?? p.storageKey),
-    })),
-  );
+  // Presigning is only needed when the Photos tab is actually shown.
+  const photoUrls =
+    tab === "photos"
+      ? await Promise.all(
+          photos.map(async (p) => ({
+            ...p,
+            url: await r2PresignGet(p.storageKey),
+            // Grids load the small webp; clicking opens the full original.
+            thumbUrl: await r2PresignGet(p.thumbKey ?? p.storageKey),
+          })),
+        )
+      : [];
 
   // Latest reading per participant (readings are newest-first).
   const latest = new Map<string, (typeof readings)[number]>();
@@ -128,6 +137,8 @@ export default async function EventDetail({
     redirect(`/o/${orgId}`);
   }
 
+  const base = `/o/${orgId}/e/${eventId}`;
+
   return (
     <PageShell width="max-w-xl">
       <BackLink href={`/o/${orgId}`}>Events</BackLink>
@@ -137,10 +148,25 @@ export default async function EventDetail({
         {event.location ? ` · ${event.location}` : ""}
       </p>
 
-      <FieldCapture orgId={orgId} eventId={eventId} roster={entries} />
+      <TabBar
+        base={base}
+        active={tab}
+        tabs={[
+          {
+            key: "participants",
+            label: `Participants${roster.length ? ` (${roster.length})` : ""}`,
+          },
+          { key: "photos", label: `Photos${photos.length ? ` (${photos.length})` : ""}` },
+          { key: "settings", label: "Settings" },
+        ]}
+      />
 
-      {/* --- Photos --- */}
-      <Card className="mt-8 p-5">
+      {tab === "participants" ? (
+        <FieldCapture orgId={orgId} eventId={eventId} roster={entries} />
+      ) : null}
+
+      {tab === "photos" ? (
+      <Card className="mt-6 p-5">
         <div className="flex items-center justify-between gap-3">
           <h3 className="font-medium">Photos</h3>
           <span className="flex items-center gap-2">
@@ -198,9 +224,12 @@ export default async function EventDetail({
           </p>
         )}
       </Card>
+      ) : null}
 
+      {tab === "settings" ? (
+      <>
       {/* --- Registration settings --- */}
-      <Card className="mt-8 p-5">
+      <Card className="mt-6 p-5">
         <div className="flex items-center justify-between gap-3">
           <h3 className="font-medium">Public registration</h3>
           <Badge>{event.publicRegistration ? "Open" : "Closed"}</Badge>
@@ -285,7 +314,7 @@ export default async function EventDetail({
       </Card>
 
       {/* --- Manage ------------------------------------------------------------ */}
-      <Card className="mt-8 border-red-100 p-5">
+      <Card className="mt-6 border-red-100 p-5">
         <h3 className="font-medium">Manage event</h3>
         <form action={renameEvent} className="mt-3 flex gap-2">
           <Input name="name" key={event.title} defaultValue={event.title} required />
@@ -300,6 +329,8 @@ export default async function EventDetail({
           </ConfirmButton>
         </form>
       </Card>
+      </>
+      ) : null}
     </PageShell>
   );
 }
