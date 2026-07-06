@@ -11,6 +11,7 @@ import {
 } from "@convene/schemas";
 import { enqueueOp, flushOutbox, outboxDb } from "@/lib/outbox";
 import { Button, Card, Input } from "@/components/ui";
+import { Rollout } from "@/components/rollout";
 
 export interface RosterEntry {
   participantId: string;
@@ -219,16 +220,44 @@ export function FieldCapture({
         ) : null}
       </div>
 
-      <h2 className="mt-6 text-lg font-semibold">
-        Participants{" "}
-        <span className="font-normal text-stone-400">({mergedRoster.length})</span>
-      </h2>
+      <div className="mt-6">
+        <Rollout
+          heading={
+            <h2 className="text-lg font-semibold">
+              Participants{" "}
+              <span className="font-normal text-stone-400">
+                ({mergedRoster.length})
+              </span>
+            </h2>
+          }
+          label="+ Add people"
+          accent
+        >
+          <Card className="p-4">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void addParticipant(e.currentTarget);
+              }}
+              className="space-y-3"
+            >
+              <div className="flex gap-2">
+                <Input name="firstName" required placeholder="First name" />
+                <Input name="lastName" placeholder="Last name" />
+              </div>
+              <Button type="submit" className="w-full">
+                Add to event
+              </Button>
+            </form>
+          </Card>
+        </Rollout>
+      </div>
 
       <ul className="mt-3 space-y-3">
         {mergedRoster.length === 0 ? (
           <li>
             <Card className="p-6 text-center text-stone-500">
-              No participants yet — add someone below.
+              No participants yet — tap “+ Add people” to add someone.
             </Card>
           </li>
         ) : (
@@ -346,24 +375,6 @@ export function FieldCapture({
         )}
       </ul>
 
-      <Card className="mt-8 p-5">
-        <h3 className="font-medium">Add participant</h3>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void addParticipant(e.currentTarget);
-          }}
-          className="mt-3 space-y-3"
-        >
-          <div className="flex gap-2">
-            <Input name="firstName" required placeholder="First name" />
-            <Input name="lastName" placeholder="Last name" />
-          </div>
-          <Button type="submit" className="w-full">
-            Add to event
-          </Button>
-        </form>
-      </Card>
     </>
   );
 }
