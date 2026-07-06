@@ -1,5 +1,6 @@
 import { createTenantClient } from "@convene/db";
 import { advanceModeSchema, createStageSchema, renameSchema } from "@convene/schemas";
+import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireMembership } from "@/lib/session";
@@ -20,14 +21,13 @@ export default async function ProgramDetail({
   const { userId } = await requireMembership(orgId);
 
   const db = createTenantClient(orgId, userId);
-  const program = await db.programs.get(programId);
-  if (!program) redirect(`/o/${orgId}/programs`);
-
-  const [enrollments, participants, publishedForms] = await Promise.all([
+  const [program, enrollments, participants, publishedForms] = await Promise.all([
+    db.programs.get(programId),
     db.enrollments.listForProgram(programId),
     db.participants.list(),
     db.forms.listPublished(),
   ]);
+  if (!program) redirect(`/o/${orgId}/programs`);
 
   const enrolledIds = new Set(enrollments.map((e) => e.participantId));
   const enrollable = participants.filter((p) => !enrolledIds.has(p.id));
@@ -502,12 +502,12 @@ export default async function ProgramDetail({
                       </form>
                     </div>
 
-                    <a
+                    <Link
                       href={`/o/${orgId}/p/${e.participantId}`}
                       className="block text-xs font-medium text-stone-500 underline-offset-2 hover:text-emerald-700 hover:underline"
                     >
                       History &amp; intake →
-                    </a>
+                    </Link>
                   </div>
                 </details>
               </Card>

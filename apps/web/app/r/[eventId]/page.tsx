@@ -1,5 +1,6 @@
 import { getPublicEvent, registerForEventPublic } from "@convene/db";
 import { formQuestionsSchema, publicRegistrationSchema } from "@convene/schemas";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { buildAnswers } from "@/lib/forms";
 import { formatDateTime } from "@/lib/format";
@@ -51,12 +52,12 @@ export default async function PublicRegistration({
             {event.location ? `, ${event.location}` : ""}. If you provided an
             email, you can sign in with it anytime to see your data.
           </p>
-          <a
+          <Link
             href="/sign-in?to=me"
             className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 font-medium text-white shadow-sm transition-all duration-150 hover:bg-emerald-500 hover:shadow-md"
           >
             See my data <span aria-hidden>→</span>
-          </a>
+          </Link>
         </Card>
       </PageShell>
     );

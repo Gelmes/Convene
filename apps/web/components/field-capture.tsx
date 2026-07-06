@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
@@ -354,12 +355,12 @@ export function FieldCapture({
                         Save reading
                       </Button>
                       <div className="flex items-center justify-between text-xs">
-                        <a
+                        <Link
                           href={`/o/${orgId}/p/${p.participantId}`}
                           className="font-medium text-stone-500 underline-offset-2 transition-colors hover:text-emerald-700 hover:underline"
                         >
                           History &amp; intake →
-                        </a>
+                        </Link>
                         {last ? (
                           <span className="text-stone-400">
                             Last: {last.systolic}/{last.diastolic} at {fmt(last.takenAt)}

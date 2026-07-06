@@ -1,6 +1,7 @@
 import { auth } from "@convene/auth";
 import { getPortalData } from "@convene/db";
 import { formAnswersSchema } from "@convene/schemas";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { formatDateTime } from "@/lib/format";
 import { r2Configured, r2PresignGet } from "@/lib/r2";
@@ -42,9 +43,9 @@ export default async function Portal() {
   return (
     <PageShell>
       <div className="flex items-center justify-between">
-        <a href="/">
+        <Link href="/">
           <Brand />
-        </a>
+        </Link>
         <LinkButton href="/dashboard" variant="ghost" className="px-3 py-1.5 text-sm">
           Host dashboard
         </LinkButton>

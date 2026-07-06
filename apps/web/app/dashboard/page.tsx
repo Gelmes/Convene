@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { auth, signOut } from "@convene/auth";
 import { prisma } from "@convene/db";
 import { createOrganizationSchema } from "@convene/schemas";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { slugify } from "@/lib/slug";
@@ -53,16 +54,16 @@ export default async function Dashboard() {
   return (
     <PageShell>
       <div className="flex items-center justify-between">
-        <a href="/">
+        <Link href="/">
           <Brand />
-        </a>
+        </Link>
         <span className="flex items-center gap-1">
-          <a
+          <Link
             href="/me"
             className="rounded-xl px-3 py-1.5 text-sm font-medium text-stone-500 transition-colors hover:bg-stone-900/5 hover:text-stone-900"
           >
             My participation
-          </a>
+          </Link>
           <form action={doSignOut}>
             <Button variant="ghost" className="px-3 py-1.5 text-sm">
               Sign out
@@ -88,7 +89,7 @@ export default async function Dashboard() {
         ) : (
           memberships.map((m) => (
             <li key={m.id}>
-              <a href={`/o/${m.organizationId}`} className="group block">
+              <Link href={`/o/${m.organizationId}`} className="group block">
                 <Card className="flex items-center justify-between p-4 transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md">
                   <span className="font-medium text-stone-900">
                     {m.organization.name}
@@ -103,7 +104,7 @@ export default async function Dashboard() {
                     </span>
                   </span>
                 </Card>
-              </a>
+              </Link>
             </li>
           ))
         )}

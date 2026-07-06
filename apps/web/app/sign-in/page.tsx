@@ -1,5 +1,6 @@
 import { signIn } from "@convene/auth";
 import { signInSchema } from "@convene/schemas";
+import Link from "next/link";
 import { Brand, Button, Card, Input, PageShell } from "@/components/ui";
 
 export default async function SignIn({
@@ -24,9 +25,9 @@ export default async function SignIn({
   return (
     <PageShell width="max-w-md">
       <div className="flex justify-center">
-        <a href="/">
+        <Link href="/">
           <Brand />
-        </a>
+        </Link>
       </div>
 
       <Card className="mt-10 p-6 sm:p-8">

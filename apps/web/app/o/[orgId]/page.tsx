@@ -1,5 +1,6 @@
 import { createTenantClient, prisma } from "@convene/db";
 import { createEventSchema, renameSchema } from "@convene/schemas";
+import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireMembership } from "@/lib/session";
@@ -17,14 +18,18 @@ export default async function OrgHome({
   const { orgId } = await params;
   const { userId, role } = await requireMembership(orgId);
 
-  const org = await prisma.organization.findUnique({
-    where: { id: orgId },
-    include: {
-      _count: { select: { participants: true, events: true, healthReadings: true } },
-    },
-  });
   const db = createTenantClient(orgId, userId);
-  const events = await db.events.list();
+  const [org, events] = await Promise.all([
+    prisma.organization.findUnique({
+      where: { id: orgId },
+      include: {
+        _count: {
+          select: { participants: true, events: true, healthReadings: true },
+        },
+      },
+    }),
+    db.events.list(),
+  ]);
 
   const canManage = role === "OWNER" || role === "ADMIN";
 
@@ -125,18 +130,18 @@ export default async function OrgHome({
           title
         )}
         <nav className="mt-2 flex gap-1">
-          <a
+          <Link
             href={`/o/${orgId}/programs`}
             className="rounded-xl px-2.5 py-1 text-sm font-medium text-stone-500 transition-colors hover:bg-stone-900/5 hover:text-stone-900"
           >
             Programs
-          </a>
-          <a
+          </Link>
+          <Link
             href={`/o/${orgId}/forms`}
             className="rounded-xl px-2.5 py-1 text-sm font-medium text-stone-500 transition-colors hover:bg-stone-900/5 hover:text-stone-900"
           >
             Intake forms
-          </a>
+          </Link>
         </nav>
       </div>
 
@@ -174,7 +179,7 @@ export default async function OrgHome({
           ) : (
             events.map((e) => (
               <li key={e.id}>
-                <a href={`/o/${orgId}/e/${e.id}`} className="group block">
+                <Link href={`/o/${orgId}/e/${e.id}`} className="group block">
                   <Card className="flex items-center justify-between p-4 transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md">
                     <span className="min-w-0">
                       <span className="block truncate font-medium text-stone-900">
@@ -198,7 +203,7 @@ export default async function OrgHome({
                       </span>
                     </span>
                   </Card>
-                </a>
+                </Link>
               </li>
             ))
           )}

@@ -1,5 +1,6 @@
 import { createTenantClient } from "@convene/db";
 import { renameSchema } from "@convene/schemas";
+import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireMembership } from "@/lib/session";
@@ -26,19 +27,22 @@ export default async function EventDetail({
   const { userId } = await requireMembership(orgId);
 
   const db = createTenantClient(orgId, userId);
-  const event = await db.events.get(eventId);
-  if (!event) redirect(`/o/${orgId}`);
+  const photosEnabled = r2Configured();
 
-  const roster = await db.registrations.listForEvent(eventId);
-  const readings = await db.healthReadings.listForEvent(eventId);
-  const publishedForms = await db.forms.listPublished();
-  const allStages = await db.programs.listAllStages();
+  // Independent queries — one parallel batch instead of six sequential trips.
+  const [event, roster, readings, publishedForms, allStages, photos] =
+    await Promise.all([
+      db.events.get(eventId),
+      db.registrations.listForEvent(eventId),
+      db.healthReadings.listForEvent(eventId),
+      db.forms.listPublished(),
+      db.programs.listAllStages(),
+      photosEnabled ? db.photos.listForEvent(eventId) : Promise.resolve([]),
+    ]);
+  if (!event) redirect(`/o/${orgId}`);
 
   const origin = process.env.AUTH_URL ?? "http://localhost:3000";
   const publicUrl = `${origin.replace(/\/$/, "")}/r/${eventId}`;
-
-  const photosEnabled = r2Configured();
-  const photos = photosEnabled ? await db.photos.listForEvent(eventId) : [];
   // Presigning is only needed when the Photos tab is actually shown.
   const photoUrls =
     tab === "photos"
@@ -279,9 +283,9 @@ export default async function EventDetail({
           {publishedForms.length === 0 ? (
             <p className="mt-2 text-xs text-stone-400">
               No published forms yet —{" "}
-              <a href={`/o/${orgId}/forms`} className="underline hover:text-stone-600">
+              <Link href={`/o/${orgId}/forms`} className="underline hover:text-stone-600">
                 create one
-              </a>
+              </Link>
               .
             </p>
           ) : null}

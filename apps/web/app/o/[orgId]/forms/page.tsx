@@ -1,5 +1,6 @@
 import { createTenantClient, prisma } from "@convene/db";
 import { createFormTemplateSchema } from "@convene/schemas";
+import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { requireMembership } from "@/lib/session";
 import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
@@ -13,9 +14,11 @@ export default async function FormsPage({
   const { orgId } = await params;
   const { userId } = await requireMembership(orgId);
 
-  const org = await prisma.organization.findUnique({ where: { id: orgId } });
   const db = createTenantClient(orgId, userId);
-  const forms = await db.forms.list();
+  const [org, forms] = await Promise.all([
+    prisma.organization.findUnique({ where: { id: orgId } }),
+    db.forms.list(),
+  ]);
 
   async function createForm(formData: FormData) {
     "use server";
@@ -66,7 +69,7 @@ export default async function FormsPage({
         ) : (
           forms.map((f) => (
             <li key={f.id}>
-              <a href={`/o/${orgId}/forms/${f.id}`} className="group block">
+              <Link href={`/o/${orgId}/forms/${f.id}`} className="group block">
                 <Card className="flex items-center justify-between p-4 transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md">
                   <span className="min-w-0">
                     <span className="block truncate font-medium text-stone-900">
@@ -88,7 +91,7 @@ export default async function FormsPage({
                     </span>
                   </span>
                 </Card>
-              </a>
+              </Link>
             </li>
           ))
         )}

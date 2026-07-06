@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type {
   AnchorHTMLAttributes,
   ButtonHTMLAttributes,
@@ -47,12 +48,14 @@ export function Button({
 export function LinkButton({
   variant = "primary",
   className,
+  href = "#",
   ...props
 }: AnchorHTMLAttributes<HTMLAnchorElement> & {
   variant?: keyof typeof buttonVariants;
 }) {
   return (
-    <a
+    <Link
+      href={href}
       className={cx(buttonBase, buttonVariants[variant], "px-4 py-2.5", className)}
       {...props}
     />
@@ -120,12 +123,12 @@ export function Badge({ children }: { children: ReactNode }) {
 
 export function BackLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <a
+    <Link
       href={href}
       className="inline-flex items-center gap-1 text-sm text-stone-500 transition-colors hover:text-stone-900"
     >
       <span aria-hidden>←</span> {children}
-    </a>
+    </Link>
   );
 }
 
@@ -145,7 +148,7 @@ export function TabBar({
   return (
     <nav className="mt-6 flex gap-1 rounded-2xl bg-stone-200/50 p-1">
       {tabs.map((t, i) => (
-        <a
+        <Link
           key={t.key}
           href={i === 0 ? base : `${base}?tab=${t.key}`}
           aria-current={active === t.key ? "page" : undefined}
@@ -157,7 +160,7 @@ export function TabBar({
           )}
         >
           {t.label}
-        </a>
+        </Link>
       ))}
     </nav>
   );

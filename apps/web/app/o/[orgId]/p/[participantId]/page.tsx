@@ -19,11 +19,9 @@ export default async function ParticipantDetail({
   const { userId } = await requireMembership(orgId);
 
   const db = createTenantClient(orgId, userId);
-  const participant = await db.participants.get(participantId);
-  if (!participant) redirect(`/o/${orgId}`);
-
-  const [submissions, readings, publishedForms, activeInvite, latestReg, org] =
+  const [participant, submissions, readings, publishedForms, activeInvite, latestReg, org] =
     await Promise.all([
+      db.participants.get(participantId),
       db.submissions.listForParticipant(participantId),
       db.healthReadings.listForParticipant(participantId),
       db.forms.listPublished(),
@@ -31,6 +29,7 @@ export default async function ParticipantDetail({
       db.registrations.latestForParticipant(participantId),
       prisma.organization.findUnique({ where: { id: orgId }, select: { name: true } }),
     ]);
+  if (!participant) redirect(`/o/${orgId}`);
 
   const origin = (process.env.AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
   const inviteUrl = activeInvite ? `${origin}/i/${activeInvite.token}` : null;

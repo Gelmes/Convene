@@ -1,5 +1,6 @@
 import { createTenantClient, prisma } from "@convene/db";
 import { createProgramSchema } from "@convene/schemas";
+import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { requireMembership } from "@/lib/session";
 import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
@@ -13,9 +14,11 @@ export default async function ProgramsPage({
   const { orgId } = await params;
   const { userId } = await requireMembership(orgId);
 
-  const org = await prisma.organization.findUnique({ where: { id: orgId } });
   const db = createTenantClient(orgId, userId);
-  const programs = await db.programs.list();
+  const [org, programs] = await Promise.all([
+    prisma.organization.findUnique({ where: { id: orgId } }),
+    db.programs.list(),
+  ]);
 
   async function createProgram(formData: FormData) {
     "use server";
@@ -62,7 +65,7 @@ export default async function ProgramsPage({
         ) : (
           programs.map((p) => (
             <li key={p.id}>
-              <a href={`/o/${orgId}/programs/${p.id}`} className="group block">
+              <Link href={`/o/${orgId}/programs/${p.id}`} className="group block">
                 <Card className="flex items-center justify-between p-4 transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md">
                   <span className="min-w-0">
                     <span className="block truncate font-medium text-stone-900">
@@ -83,7 +86,7 @@ export default async function ProgramsPage({
                     </span>
                   </span>
                 </Card>
-              </a>
+              </Link>
             </li>
           ))
         )}

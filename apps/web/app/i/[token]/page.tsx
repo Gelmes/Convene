@@ -1,5 +1,6 @@
 import { acceptInvite, getInviteByToken } from "@convene/db";
 import { acceptInviteSchema, formQuestionsSchema } from "@convene/schemas";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { buildAnswers } from "@/lib/forms";
 import { formatDateTime } from "@/lib/format";
@@ -26,12 +27,12 @@ function Message({
         <h1 className="text-xl font-semibold">{title}</h1>
         <p className="mt-2 text-sm text-stone-500">{body}</p>
         {ctaHref && ctaLabel ? (
-          <a
+          <Link
             href={ctaHref}
             className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 font-medium text-white shadow-sm transition-all duration-150 hover:bg-emerald-500 hover:shadow-md"
           >
             {ctaLabel} <span aria-hidden>→</span>
-          </a>
+          </Link>
         ) : null}
       </Card>
     </PageShell>
