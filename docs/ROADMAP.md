@@ -86,6 +86,25 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
 
 ---
 
+## Future considerations (decided 2026-07-06, not yet scheduled)
+- **Auth:** ADD Google OAuth alongside magic links (not a switch) once participant
+  sign-ups come from strangers; magic link stays as universal fallback + claim
+  mechanism. Never add passwords.
+- **Payments are two systems:** (a) SaaS billing = hosts pay us — Phase 6, Stripe,
+  behind a thin provider seam (our Plan/Subscription tables stay source of truth;
+  provider IDs + webhooks are the only integration surface, so PayPal etc. can be
+  adapters later). (b) Participant→host payments = later marketplace phase on
+  Stripe **Connect**; BNPL/split payments (Affirm/Klarna/Afterpay) come as Stripe
+  payment methods, no direct Affirm integration needed.
+- **Program contracts:** when requested, ship an "Agreement" question type in the
+  form builder (host-supplied waiver text/PDF link + required checkbox; acceptance
+  stored w/ timestamp + form version + audit). Full e-sign (DocuSign etc.) only on
+  real demand. Convene records assent; hosts own their legal text.
+- **Event-discovery hub (Meetup-like):** public searchable index over opted-in
+  events. Prereqs: categories/tags, geo location fields, org public profiles, SEO
+  listing pages. Sequence AFTER billing + public API + site generator (those feed
+  it hosts). No rewrite needed — layers on existing public event pages.
+
 ## Operational TODOs (not code phases)
 - [ ] **Verify a domain in Resend** once the product domain is bought. Until then the
       free `onboarding@resend.dev` sender only delivers to the Resend account owner's
