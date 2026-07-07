@@ -1,6 +1,6 @@
 {
-  "name": "Convene",
-  "short_name": "Convene",
+  "name": "Vitalgather",
+  "short_name": "Vitalgather",
   "description": "Event host + participant health-data manager",
   "start_url": "/",
   "display": "standalone",

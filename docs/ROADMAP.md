@@ -81,7 +81,7 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
 
 ### Phase 7 — Ecosystem integration
 - Public API + auth (API keys / OAuth) for external products.
-- **Site Generator** (separate repo) embeds/links Convene intake forms + event registration.
+- **Site Generator** (separate repo) embeds/links Vitalgather intake forms + event registration.
 - (Much later) domain reselling via a registrar reseller API.
 
 ---
@@ -99,7 +99,7 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
 - **Program contracts:** when requested, ship an "Agreement" question type in the
   form builder (host-supplied waiver text/PDF link + required checkbox; acceptance
   stored w/ timestamp + form version + audit). Full e-sign (DocuSign etc.) only on
-  real demand. Convene records assent; hosts own their legal text.
+  real demand. Vitalgather records assent; hosts own their legal text.
 - **Event-discovery hub (Meetup-like):** public searchable index over opted-in
   events. Prereqs: categories/tags, geo location fields, org public profiles, SEO
   listing pages. Sequence AFTER billing + public API + site generator (those feed
@@ -110,9 +110,9 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
       free `onboarding@resend.dev` sender only delivers to the Resend account owner's
       email (marco.firsteye@gmail.com) — participants/other hosts can't receive
       magic links. Steps: Resend → Domains → Add domain → set the DNS records →
-      change `EMAIL_FROM` to e.g. `Convene <signin@yourdomain.com>`.
+      change `EMAIL_FROM` to e.g. `Vitalgather <signin@vitalgather.com>`.
 - [ ] Set `RESEND_API_KEY` on Railway (magic links currently print to deploy logs).
-- [ ] Rename the product (Convene is a placeholder) before public assets.
+- [x] Renamed to **Vitalgather** (2026-07-06). Register vitalgather.com + .app, then wire domain (Railway custom domain, Resend verification, AUTH_URL/EMAIL_FROM).
 
 ## Suggested near-term focus
 **Phases 0 → 1** get you the single most valuable, demoable loop: run a real event and capture BP on your phone, offline. Everything after that is additive. I'd treat 0+1 as the first milestone before touching forms.

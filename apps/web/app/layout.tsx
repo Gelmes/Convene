@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Convene",
+  title: "Vitalgather",
   description: "Event host + participant health-data manager",
   manifest: "/manifest.webmanifest",
 };

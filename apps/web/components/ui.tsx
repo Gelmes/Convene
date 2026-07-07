@@ -223,9 +223,9 @@ export function Brand({ className }: { className?: string }) {
   return (
     <span className={cx("inline-flex items-center gap-2", className)}>
       <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-stone-900 text-sm font-bold text-white">
-        C
+        V
       </span>
-      <span className="text-lg font-semibold tracking-tight">Convene</span>
+      <span className="text-lg font-semibold tracking-tight">Vitalgather</span>
     </span>
   );
 }

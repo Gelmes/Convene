@@ -1,6 +1,6 @@
-# Convene
+# Vitalgather
 
-> Working codename — rename freely. "Convene" = to gather people together for an event. Alternatives if you dislike it: **Hearth**, **Gather**, **HostOS**, **Cohort**.
+> Named 2026-07-06: **vital** signs + **gather**ings — the product in one word. Domains: vitalgather.com / vitalgather.app.
 
 A multi-tenant platform for **event hosts / facilitators** to run events, capture participant health data (blood pressure, notes) in the field, collect custom intake forms, and give participants a portal to see their data, events, and (later) photos.
 

@@ -26,7 +26,7 @@ export async function sendInviteEmail(input: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: process.env.EMAIL_FROM ?? "Convene <onboarding@resend.dev>",
+      from: process.env.EMAIL_FROM ?? "Vitalgather <onboarding@resend.dev>",
       to: input.to,
       subject,
       html: `

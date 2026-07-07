@@ -1,5 +1,5 @@
 /*
- * Convene service worker — offline support for field capture.
+ * Vitalgather service worker — offline support for field capture.
  *
  * Strategy:
  *  - Navigations (HTML): network-first, falling back to the last cached copy,
@@ -34,7 +34,7 @@ self.addEventListener("activate", (event) => {
 const OFFLINE_FALLBACK = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Offline — Convene</title>
+<title>Offline — Vitalgather</title>
 <style>
   body{font-family:system-ui,sans-serif;background:#f5f5f4;color:#1c1917;
        display:grid;place-items:center;min-height:100dvh;margin:0;text-align:center}
