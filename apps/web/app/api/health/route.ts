@@ -5,8 +5,18 @@ import { NextResponse } from "next/server";
  * see. Booleans only, never values, so this is safe to expose.
  */
 export async function GET() {
+  // The AUTH_URL host is public information (it's on every auth redirect),
+  // so exposing it here is safe and makes domain-cutover issues diagnosable.
+  let authUrlHost: string | null = null;
+  try {
+    authUrlHost = process.env.AUTH_URL ? new URL(process.env.AUTH_URL).host : null;
+  } catch {
+    authUrlHost = "INVALID-URL";
+  }
+
   return NextResponse.json({
     commit: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
+    authUrlHost,
     env: {
       database: Boolean(process.env.DATABASE_URL),
       authUrl: Boolean(process.env.AUTH_URL),
