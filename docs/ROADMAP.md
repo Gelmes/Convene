@@ -106,12 +106,11 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
   it hosts). No rewrite needed — layers on existing public event pages.
 
 ## Operational TODOs (not code phases)
-- [ ] **Verify a domain in Resend** once the product domain is bought. Until then the
-      free `onboarding@resend.dev` sender only delivers to the Resend account owner's
-      email (marco.firsteye@gmail.com) — participants/other hosts can't receive
-      magic links. Steps: Resend → Domains → Add domain → set the DNS records →
-      change `EMAIL_FROM` to e.g. `Vitalgather <signin@vitalgather.com>`.
-- [ ] Set `RESEND_API_KEY` on Railway (magic links currently print to deploy logs).
+- [x] Domain wired end-to-end (2026-07-07): app on https://vitalgather.com (Railway
+      custom domain, port 8080, Cloudflare DNS-only CNAME), vitalgather.app 301→.com,
+      Resend domain verified, `EMAIL_FROM=Vitalgather <signin@vitalgather.com>`,
+      `AUTH_URL=https://vitalgather.com`. Emails now deliver to ANY address.
+- [x] `RESEND_API_KEY` set on Railway.
 - [x] Renamed to **Vitalgather** (2026-07-06). Register vitalgather.com + .app, then wire domain (Railway custom domain, Resend verification, AUTH_URL/EMAIL_FROM).
 
 ## Suggested near-term focus
