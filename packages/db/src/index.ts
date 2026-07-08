@@ -11,3 +11,9 @@ export {
   type PublicQuestion,
 } from "./public";
 export { getPortalData, type PortalParticipant } from "./portal";
+export {
+  assertWithinLimit,
+  getUsage,
+  LimitError,
+  type LimitedResource,
+} from "./limits";

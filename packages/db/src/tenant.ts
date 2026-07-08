@@ -1,6 +1,7 @@
 import { encryptField, decryptField } from "@convene/core";
 import { recordAudit } from "./audit";
 import { prisma } from "./client";
+import { assertWithinLimit } from "./limits";
 
 /**
  * Does the participant meet this stage's requirements?
@@ -124,12 +125,13 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
       get(id: string) {
         return prisma.participant.findFirst({ where: { id, organizationId } });
       },
-      create(data: {
+      async create(data: {
         firstName: string;
         lastName?: string;
         email?: string;
         phone?: string;
       }) {
+        await assertWithinLimit(organizationId, "participants");
         return prisma.participant.create({
           data: {
             organizationId,
@@ -239,13 +241,14 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
           data: { stageId },
         });
       },
-      create(data: {
+      async create(data: {
         title: string;
         description?: string;
         location?: string;
         startsAt: Date;
         endsAt?: Date;
       }) {
+        await assertWithinLimit(organizationId, "events");
         return prisma.event.create({
           data: {
             organizationId,
@@ -297,6 +300,7 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
               throw new Error("Participant id conflict");
             }
             if (!existing) {
+              await assertWithinLimit(organizationId, "participants");
               await tx.participant.create({
                 data: {
                   id: pid,
@@ -309,6 +313,7 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
               });
             }
           } else {
+            await assertWithinLimit(organizationId, "participants");
             const participant = await tx.participant.create({
               data: {
                 organizationId,
@@ -391,7 +396,8 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
           include: { _count: { select: { submissions: true } } },
         });
       },
-      create(data: { name: string; description?: string }) {
+      async create(data: { name: string; description?: string }) {
+        await assertWithinLimit(organizationId, "forms");
         return prisma.formTemplate.create({
           data: {
             organizationId,
@@ -639,7 +645,8 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
           },
         });
       },
-      create(data: { name: string; description?: string }) {
+      async create(data: { name: string; description?: string }) {
+        await assertWithinLimit(organizationId, "programs");
         return prisma.program.create({
           data: {
             organizationId,

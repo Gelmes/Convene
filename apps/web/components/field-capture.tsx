@@ -220,6 +220,14 @@ export function FieldCapture({
           </span>
         ) : null}
       </div>
+      {(() => {
+        const failed = pending.find((r) => r.lastError);
+        return failed ? (
+          <p className="mt-2 text-xs text-amber-700">
+            ⚠ Sync issue: {failed.lastError}
+          </p>
+        ) : null;
+      })()}
 
       <div className="mt-6">
         <Rollout

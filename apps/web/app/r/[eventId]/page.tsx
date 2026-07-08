@@ -1,4 +1,4 @@
-import { getPublicEvent, registerForEventPublic } from "@convene/db";
+import { getPublicEvent, LimitError, registerForEventPublic } from "@convene/db";
 import { formQuestionsSchema, publicRegistrationSchema } from "@convene/schemas";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -12,7 +12,7 @@ export default async function PublicRegistration({
   searchParams,
 }: {
   params: Promise<{ eventId: string }>;
-  searchParams: Promise<{ done?: string }>;
+  searchParams: Promise<{ done?: string; full?: string }>;
 }) {
   const { eventId } = await params;
   const sp = await searchParams;
@@ -30,6 +30,23 @@ export default async function PublicRegistration({
           <p className="mt-2 text-sm text-stone-500">
             This event isn&apos;t open for public registration. Check with your
             host for the right link.
+          </p>
+        </Card>
+      </PageShell>
+    );
+  }
+
+  if (sp.full) {
+    return (
+      <PageShell width="max-w-md">
+        <div className="flex justify-center">
+          <Brand />
+        </div>
+        <Card className="mt-10 p-8 text-center">
+          <h1 className="text-xl font-semibold">Registration is full</h1>
+          <p className="mt-2 text-sm text-stone-500">
+            This event can&apos;t accept more registrations right now. Please
+            check with your host.
           </p>
         </Card>
       </PageShell>
@@ -80,7 +97,12 @@ export default async function PublicRegistration({
     });
     if (!parsed.success) return;
 
-    await registerForEventPublic(eventId, parsed.data);
+    try {
+      await registerForEventPublic(eventId, parsed.data);
+    } catch (err) {
+      if (err instanceof LimitError) redirect(`/r/${eventId}?full=1`);
+      throw err;
+    }
     redirect(`/r/${eventId}?done=1`);
   }
 

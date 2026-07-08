@@ -1,8 +1,15 @@
-import { createTenantClient, prisma } from "@convene/db";
+import { createTenantClient, getUsage, LimitError, prisma } from "@convene/db";
 import { createEventSchema, renameSchema } from "@convene/schemas";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import {
+  billingConfigured,
+  createCheckoutUrl,
+  createPortalUrl,
+  PRO_PRICES,
+  type BillingInterval,
+} from "@/lib/billing";
 import { requireMembership } from "@/lib/session";
 import { formatDateTime } from "@/lib/format";
 import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
@@ -12,24 +19,32 @@ import { SaveButton } from "@/components/save-button";
 
 export default async function OrgHome({
   params,
+  searchParams,
 }: {
   params: Promise<{ orgId: string }>;
+  searchParams: Promise<{ billing?: string; limit?: string }>;
 }) {
   const { orgId } = await params;
+  const sp = await searchParams;
   const { userId, role } = await requireMembership(orgId);
 
   const db = createTenantClient(orgId, userId);
-  const [org, events] = await Promise.all([
+  const [org, events, usage] = await Promise.all([
     prisma.organization.findUnique({
       where: { id: orgId },
       include: {
+        plan: { select: { id: true, name: true } },
+        subscription: { select: { status: true, currentPeriodEnd: true } },
         _count: {
           select: { participants: true, events: true, healthReadings: true },
         },
       },
     }),
     db.events.list(),
+    getUsage(orgId),
   ]);
+
+  const isPro = org?.plan?.id === "pro";
 
   const canManage = role === "OWNER" || role === "ADMIN";
 
@@ -43,8 +58,35 @@ export default async function OrgHome({
     });
     if (!parsed.success) return;
     const db = createTenantClient(orgId, userId);
-    await db.events.create(parsed.data);
+    try {
+      await db.events.create(parsed.data);
+    } catch (err) {
+      if (err instanceof LimitError) redirect(`/o/${orgId}?limit=events`);
+      throw err;
+    }
     revalidatePath(`/o/${orgId}`);
+  }
+
+  async function upgrade(formData: FormData) {
+    "use server";
+    const { userId, role } = await requireMembership(orgId);
+    if (role !== "OWNER" && role !== "ADMIN") return;
+    const interval: BillingInterval =
+      formData.get("interval") === "yearly" ? "yearly" : "monthly";
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+    const url = await createCheckoutUrl(orgId, interval, user?.email);
+    redirect(url);
+  }
+
+  async function manageBilling() {
+    "use server";
+    const { role } = await requireMembership(orgId);
+    if (role !== "OWNER" && role !== "ADMIN") return;
+    const url = await createPortalUrl(orgId);
+    redirect(url);
   }
 
   async function renameOrg(formData: FormData) {
@@ -93,6 +135,25 @@ export default async function OrgHome({
   return (
     <PageShell>
       <BackLink href="/dashboard">All organizations</BackLink>
+
+      {sp.billing === "success" ? (
+        <Card className="mt-4 border-emerald-200 bg-emerald-50/60 p-4 text-sm text-emerald-800">
+          🎉 Welcome to <strong>Vitalgather Pro</strong> — everything is now
+          unlimited. (It can take a few seconds for the plan badge below to
+          update after checkout.)
+        </Card>
+      ) : null}
+      {sp.billing === "canceled" ? (
+        <Card className="mt-4 border-stone-200 bg-stone-50 p-4 text-sm text-stone-600">
+          Checkout canceled — no charge was made.
+        </Card>
+      ) : null}
+      {sp.limit ? (
+        <Card className="mt-4 border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-800">
+          You&apos;ve reached the Free plan&apos;s {sp.limit} limit.{" "}
+          <strong>Upgrade to Pro below</strong> for unlimited everything.
+        </Card>
+      ) : null}
 
       <div className="mt-3">
         {canManage && org ? (
@@ -209,6 +270,83 @@ export default async function OrgHome({
           )}
         </ul>
       </div>
+
+      {/* --- Billing ------------------------------------------------------------ */}
+      {canManage ? (
+        <Card className="mt-8 p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-medium">Plan</h3>
+            <Badge>
+              {isPro
+                ? `Pro${
+                    org?.subscription?.status && org.subscription.status !== "active"
+                      ? ` · ${org.subscription.status}`
+                      : ""
+                  }`
+                : "Free"}
+            </Badge>
+          </div>
+
+          <ul className="mt-3 space-y-2">
+            {usage.map((u) => (
+              <li key={u.resource} className="text-xs">
+                <div className="flex items-center justify-between text-stone-600">
+                  <span className="capitalize">{u.resource}</span>
+                  <span className="tabular-nums">
+                    {u.used} / {u.limit ?? "∞"}
+                  </span>
+                </div>
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-stone-100">
+                  <div
+                    className={`h-full rounded-full ${
+                      u.limit != null && u.used >= u.limit
+                        ? "bg-amber-500"
+                        : "bg-emerald-500"
+                    }`}
+                    style={{
+                      width:
+                        u.limit == null
+                          ? "4%"
+                          : `${Math.min(100, (u.used / u.limit) * 100)}%`,
+                    }}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          {!billingConfigured() ? (
+            <p className="mt-4 rounded-xl bg-stone-50 p-3 text-xs text-stone-500 ring-1 ring-inset ring-stone-200">
+              Billing isn&apos;t configured yet — set the Stripe environment
+              variables on Railway to enable upgrades.
+            </p>
+          ) : isPro ? (
+            <form action={manageBilling} className="mt-4">
+              <Button variant="ghost" className="w-full border border-stone-200">
+                Manage billing (invoices, cancel)
+              </Button>
+              {org?.subscription?.currentPeriodEnd ? (
+                <p className="mt-2 text-center text-xs text-stone-400">
+                  Renews {formatDateTime(org.subscription.currentPeriodEnd)}
+                </p>
+              ) : null}
+            </form>
+          ) : (
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <form action={upgrade} className="flex-1">
+                <input type="hidden" name="interval" value="monthly" />
+                <Button variant="accent" className="w-full">
+                  Go Pro — {PRO_PRICES.monthly.label}
+                </Button>
+              </form>
+              <form action={upgrade} className="flex-1">
+                <input type="hidden" name="interval" value="yearly" />
+                <Button className="w-full">{PRO_PRICES.yearly.label}</Button>
+              </form>
+            </div>
+          )}
+        </Card>
+      ) : null}
     </PageShell>
   );
 }

@@ -75,9 +75,19 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
 - *Later polish:* program progress on the participant portal (`/me`); kanban
   board view; BP trend chart.
 
-### Phase 6 — Billing seam activated
-- Stripe subscriptions; Plans with limits; enforce limits from the plan.
-- **Demo:** subscribe an org to a paid plan.
+### Phase 6 — Billing seam activated ✅ done
+- Free + Pro ($29/mo, $290/yr). Plan/Subscription tables are the source of
+  truth (limits in `Plan.limits` JSON, seeded in the migration, adjustable via
+  SQL); Stripe reached only via checkout/portal sessions + signature-verified
+  webhooks (`/api/billing/webhook`), all provider ids behind a `provider` field.
+- Inline `price_data` checkout → zero Stripe dashboard product setup; only
+  `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` env vars.
+- Free limits (3 events / 50 participants / 1 program / 3 forms) enforced in
+  the tenant layer + public registration; friendly upgrade banners on limit,
+  "Registration is full" on public page, sync-error surfacing in field capture.
+- Org page billing card: plan badge, usage meters, Go Pro (monthly/yearly),
+  Stripe customer portal for invoices/cancel.
+- **Demo:** hit a free limit, upgrade with test card 4242…, watch limits lift.
 
 ### Phase 7 — Ecosystem integration
 - Public API + auth (API keys / OAuth) for external products.

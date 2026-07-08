@@ -1,4 +1,5 @@
 import { prisma } from "./client";
+import { assertWithinLimit } from "./limits";
 
 /** Shape of a personal invite as shown on the public claim page. */
 export interface PublicInvite {
@@ -228,6 +229,9 @@ export async function registerForEventPublic(
       where: { id: eventId },
       select: { organizationId: true },
     })).organizationId;
+
+    // The host's plan caps participants; public sign-ups count toward it.
+    await assertWithinLimit(orgId, "participants");
 
     const participant = await tx.participant.create({
       data: {

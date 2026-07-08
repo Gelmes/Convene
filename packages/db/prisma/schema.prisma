@@ -19,10 +19,13 @@ model Organization {
   id        String   @id @default(cuid())
   name      String
   slug      String   @unique
-  planId    String? // billing seam — nullable until Phase 6
+  planId    String? // null = free tier
   settings  Json     @default("{}")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  plan         Plan?         @relation(fields: [planId], references: [id], onDelete: SetNull)
+  subscription Subscription?
 
   memberships     Membership[]
   participants    Participant[]
@@ -38,6 +41,38 @@ model Organization {
   enrollments      ProgramEnrollment[]
   stageCompletions StageCompletion[]
   auditLogs        AuditLog[]
+}
+
+// ---------------------------------------------------------------------------
+// Billing (Phase 6) — our tables are the source of truth; the provider
+// (Stripe today) is reached only through ids + webhooks, so it stays swappable.
+// ---------------------------------------------------------------------------
+
+model Plan {
+  id        String   @id // human keys: "free" | "pro"
+  name      String
+  limits    Json     @default("{}") // { events, participants, programs, forms } — absent key = unlimited
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organizations Organization[]
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id                     String    @id @default(cuid())
+  organizationId         String    @unique
+  planId                 String
+  provider               String    @default("stripe")
+  providerCustomerId     String?
+  providerSubscriptionId String?   @unique
+  status                 String    @default("active") // active | past_due | canceled | …
+  currentPeriodEnd       DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan         Plan         @relation(fields: [planId], references: [id])
 }
 
 model User {
