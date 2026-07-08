@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
   checkinOpSchema,
+  paidOpSchema,
   participantOpSchema,
   readingOpSchema,
   type SyncOp,
@@ -19,6 +20,7 @@ export interface RosterEntry {
   firstName: string;
   lastName: string | null;
   status: string; // EventRegistration status (REGISTERED, CHECKED_IN, …)
+  paid: boolean; // host-confirmed payment (Mode A)
   latest: {
     systolic: number;
     diastolic: number;
@@ -36,10 +38,12 @@ export function FieldCapture({
   orgId,
   eventId,
   roster,
+  priced = false,
 }: {
   orgId: string;
   eventId: string;
   roster: RosterEntry[];
+  priced?: boolean;
 }) {
   const router = useRouter();
   const [online, setOnline] = useState(true);
@@ -106,6 +110,7 @@ export function FieldCapture({
         firstName: op.firstName,
         lastName: op.lastName ?? null,
         status: "REGISTERED",
+        paid: false,
         latest: null,
       });
     }
@@ -120,6 +125,15 @@ export function FieldCapture({
   for (const op of eventOps) {
     if (op.kind === "checkin") checkedIn.add(op.participantId);
   }
+
+  // Paid = server value overridden by local paid ops (last one wins).
+  const paidOverride = new Map<string, boolean>();
+  for (const op of eventOps) {
+    if (op.kind === "paid") paidOverride.set(op.participantId, op.paid);
+  }
+  const isPaid = (p: RosterEntry) =>
+    paidOverride.get(p.participantId) ?? p.paid;
+  const paidCount = mergedRoster.filter(isPaid).length;
   const latestByParticipant = new Map<string, RosterEntry["latest"]>();
   for (const entry of mergedRoster) {
     latestByParticipant.set(entry.participantId, entry.latest);
@@ -162,6 +176,20 @@ export function FieldCapture({
       id: crypto.randomUUID(),
       eventId,
       participantId,
+    });
+    if (!parsed.success) return;
+    setApplied((a) => [...a, parsed.data]);
+    await enqueueOp(orgId, parsed.data);
+    void flush();
+  }
+
+  async function togglePaid(participantId: string, paid: boolean) {
+    const parsed = paidOpSchema.safeParse({
+      kind: "paid",
+      id: crypto.randomUUID(),
+      eventId,
+      participantId,
+      paid,
     });
     if (!parsed.success) return;
     setApplied((a) => [...a, parsed.data]);
@@ -214,6 +242,11 @@ export function FieldCapture({
           />
           {online ? "Online" : "Offline — capturing locally"}
         </span>
+        {priced ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700 ring-1 ring-inset ring-emerald-600/10">
+            $ {paidCount}/{mergedRoster.length} paid
+          </span>
+        ) : null}
         {pending.length > 0 ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-2.5 py-1 text-stone-600 ring-1 ring-inset ring-stone-200">
             {pending.length} pending sync
@@ -287,6 +320,17 @@ export function FieldCapture({
                             ✓ In
                           </span>
                         ) : null}
+                        {priced ? (
+                          isPaid(p) ? (
+                            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/10">
+                              $ paid
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20">
+                              $ due
+                            </span>
+                          )
+                        ) : null}
                         {isLocal ? (
                           <span className="text-xs font-normal text-amber-600">
                             ⟳ syncing
@@ -314,15 +358,35 @@ export function FieldCapture({
                       }}
                       className="space-y-3 border-t border-stone-100 bg-stone-50/50 p-4"
                     >
-                      {!checkedIn.has(p.participantId) ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => void checkIn(p.participantId)}
-                          className="w-full border border-dashed border-sky-300 bg-sky-50/50 text-sky-700 hover:bg-sky-100 hover:text-sky-800"
-                        >
-                          ✓ Check in
-                        </Button>
+                      {!checkedIn.has(p.participantId) || priced ? (
+                        <div className="flex gap-2">
+                          {!checkedIn.has(p.participantId) ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => void checkIn(p.participantId)}
+                              className="flex-1 border border-dashed border-sky-300 bg-sky-50/50 text-sky-700 hover:bg-sky-100 hover:text-sky-800"
+                            >
+                              ✓ Check in
+                            </Button>
+                          ) : null}
+                          {priced ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() =>
+                                void togglePaid(p.participantId, !isPaid(p))
+                              }
+                              className={
+                                isPaid(p)
+                                  ? "flex-1 border border-stone-200 text-stone-500 hover:bg-stone-100"
+                                  : "flex-1 border border-dashed border-emerald-300 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+                              }
+                            >
+                              {isPaid(p) ? "Mark unpaid" : "$ Mark paid"}
+                            </Button>
+                          ) : null}
+                        </div>
                       ) : null}
                       <div className="flex gap-2">
                         <label className="flex-1 text-xs font-medium text-stone-500">

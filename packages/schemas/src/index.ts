@@ -103,6 +103,23 @@ export const updateEventSchema = z.object({
 });
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;
 
+/** Mode A payment settings — price in dollars, converted to cents server-side. */
+export const paymentSettingsSchema = z.object({
+  price: z.coerce
+    .number()
+    .min(0)
+    .max(100000)
+    .optional(), // absent/0 = free event
+  paymentLink: z
+    .string()
+    .url("Payment link must be a full URL (https://…)")
+    .max(500)
+    .optional()
+    .or(z.literal("")),
+  paymentInstructions: z.string().max(500).optional(),
+});
+export type PaymentSettingsInput = z.infer<typeof paymentSettingsSchema>;
+
 export const advanceModeSchema = z.enum(["MANUAL", "AUTO"]);
 
 export const acceptInviteSchema = z.object({
@@ -143,10 +160,19 @@ export const checkinOpSchema = z.object({
   participantId: z.string().min(1),
 });
 
+export const paidOpSchema = z.object({
+  kind: z.literal("paid"),
+  id: z.string().uuid(),
+  eventId: z.string().min(1),
+  participantId: z.string().min(1),
+  paid: z.boolean(),
+});
+
 export const syncOpSchema = z.discriminatedUnion("kind", [
   participantOpSchema,
   readingOpSchema,
   checkinOpSchema,
+  paidOpSchema,
 ]);
 export type SyncOp = z.infer<typeof syncOpSchema>;
 

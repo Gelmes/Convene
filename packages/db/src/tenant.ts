@@ -227,6 +227,20 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
           ? photos.flatMap((p) => [p.storageKey, ...(p.thumbKey ? [p.thumbKey] : [])])
           : [];
       },
+      /** Mode A payment settings: price + the host's own payment channel. */
+      setPayment(
+        eventId: string,
+        data: {
+          priceCents: number | null;
+          paymentLink: string | null;
+          paymentInstructions: string | null;
+        },
+      ) {
+        return prisma.event.updateMany({
+          where: { id: eventId, organizationId },
+          data,
+        });
+      },
       /** Link this event to a program stage (attending it satisfies the stage). */
       async setStage(eventId: string, stageId: string | null) {
         if (stageId) {
@@ -345,6 +359,14 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
           where: { organizationId, participantId },
           orderBy: { createdAt: "desc" },
           include: { event: { select: { id: true, title: true } } },
+        });
+      },
+      /** Mode A: host-confirmed payment toggle. Idempotent — replaying the
+       *  same op lands on the same state. */
+      setPaid(eventId: string, participantId: string, paid: boolean) {
+        return prisma.eventRegistration.updateMany({
+          where: { eventId, participantId, organizationId },
+          data: { paidAt: paid ? new Date() : null },
         });
       },
       /** Mark a participant as checked in at an event (idempotent; never

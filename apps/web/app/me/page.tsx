@@ -96,8 +96,40 @@ export default async function Portal() {
                             {reg.event.location ? ` · ${reg.event.location}` : ""}
                           </span>
                         </span>
-                        <Badge>{STATUS_LABELS[reg.status] ?? reg.status}</Badge>
+                        <span className="flex shrink-0 items-center gap-1.5">
+                          {reg.event.priceCents ? (
+                            reg.paidAt ? (
+                              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/10">
+                                Paid ✓
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20">
+                                $
+                                {(reg.event.priceCents / 100)
+                                  .toFixed(2)
+                                  .replace(/\.00$/, "")}{" "}
+                                due
+                              </span>
+                            )
+                          ) : null}
+                          <Badge>{STATUS_LABELS[reg.status] ?? reg.status}</Badge>
+                        </span>
                       </div>
+                      {reg.event.priceCents && !reg.paidAt ? (
+                        <div className="mt-2 rounded-xl bg-amber-50/70 p-3 text-xs text-amber-800 ring-1 ring-inset ring-amber-600/10">
+                          {reg.event.paymentInstructions ?? "Payment is due for this event."}
+                          {reg.event.paymentLink ? (
+                            <a
+                              href={reg.event.paymentLink}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="ml-2 font-semibold underline underline-offset-2 hover:text-amber-900"
+                            >
+                              Pay now ↗
+                            </a>
+                          ) : null}
+                        </div>
+                      ) : null}
                       {reg.event.photos.length > 0 ? (
                         <>
                           <div className="mt-2 grid grid-cols-4 gap-1.5 sm:grid-cols-6">

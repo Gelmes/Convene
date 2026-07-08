@@ -36,6 +36,9 @@ export async function getPublicEvent(eventId: string) {
       description: true,
       location: true,
       startsAt: true,
+      priceCents: true,
+      paymentLink: true,
+      paymentInstructions: true,
       organization: { select: { name: true } },
       intakeForm: {
         select: { id: true, status: true, version: true, questions: true },

@@ -1,5 +1,5 @@
 import { createTenantClient } from "@convene/db";
-import { updateEventSchema } from "@convene/schemas";
+import { paymentSettingsSchema, updateEventSchema } from "@convene/schemas";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -79,6 +79,7 @@ export default async function EventDetail({
       firstName: reg.participant.firstName,
       lastName: reg.participant.lastName,
       status: reg.status,
+      paid: Boolean(reg.paidAt),
       latest: last
         ? {
             systolic: last.systolic,
@@ -127,6 +128,28 @@ export default async function EventDetail({
     const db = createTenantClient(orgId, userId);
     const stageId = String(formData.get("stageId") ?? "");
     await db.events.setStage(eventId, stageId || null);
+    revalidatePath(`/o/${orgId}/e/${eventId}`);
+  }
+
+  async function setPayment(formData: FormData) {
+    "use server";
+    const { userId } = await requireMembership(orgId);
+    const parsed = paymentSettingsSchema.safeParse({
+      price: (formData.get("price") as string) || undefined,
+      paymentLink: (formData.get("paymentLink") as string)?.trim() || "",
+      paymentInstructions:
+        (formData.get("paymentInstructions") as string)?.trim() || undefined,
+    });
+    if (!parsed.success) return;
+    const db = createTenantClient(orgId, userId);
+    await db.events.setPayment(eventId, {
+      priceCents:
+        parsed.data.price && parsed.data.price > 0
+          ? Math.round(parsed.data.price * 100)
+          : null,
+      paymentLink: parsed.data.paymentLink || null,
+      paymentInstructions: parsed.data.paymentInstructions ?? null,
+    });
     revalidatePath(`/o/${orgId}/e/${eventId}`);
   }
 
@@ -181,7 +204,12 @@ export default async function EventDetail({
       />
 
       {tab === "participants" ? (
-        <FieldCapture orgId={orgId} eventId={eventId} roster={entries} />
+        <FieldCapture
+          orgId={orgId}
+          eventId={eventId}
+          roster={entries}
+          priced={Boolean(event.priceCents)}
+        />
       ) : null}
 
       {tab === "photos" ? (
@@ -330,6 +358,61 @@ export default async function EventDetail({
             </form>
           </div>
         ) : null}
+      </Card>
+
+      {/* --- Payment (Mode A: host's own channel, we track) --------------------- */}
+      <Card className="mt-6 p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="font-medium">Payment</h3>
+          <Badge>
+            {event.priceCents
+              ? `$${(event.priceCents / 100).toFixed(2).replace(/\.00$/, "")}`
+              : "Free"}
+          </Badge>
+        </div>
+        <p className="mt-1 text-xs text-stone-400">
+          You collect payment through your own channel (Venmo, PayPal, cash…) —
+          Vitalgather shows participants how to pay and tracks who has.
+        </p>
+        <form action={setPayment} className="mt-3 space-y-3">
+          <label className="block text-xs font-medium text-stone-500">
+            Price in USD (leave empty for a free event)
+            <Input
+              name="price"
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0"
+              key={event.priceCents ?? "free"}
+              defaultValue={event.priceCents ? (event.priceCents / 100).toString() : ""}
+              placeholder="e.g. 45"
+              className="mt-1"
+            />
+          </label>
+          <label className="block text-xs font-medium text-stone-500">
+            Payment link (optional)
+            <Input
+              name="paymentLink"
+              type="url"
+              key={event.paymentLink ?? "none"}
+              defaultValue={event.paymentLink ?? ""}
+              placeholder="https://venmo.com/u/yourname"
+              className="mt-1"
+            />
+          </label>
+          <label className="block text-xs font-medium text-stone-500">
+            Payment instructions (optional)
+            <Textarea
+              name="paymentInstructions"
+              rows={2}
+              key={event.paymentInstructions ?? "none"}
+              defaultValue={event.paymentInstructions ?? ""}
+              placeholder="e.g. Venmo @yourname — include your full name in the note"
+              className="mt-1 text-sm"
+            />
+          </label>
+          <SaveButton className="w-full">Save payment settings</SaveButton>
+        </form>
       </Card>
 
       {/* --- Manage ------------------------------------------------------------ */}

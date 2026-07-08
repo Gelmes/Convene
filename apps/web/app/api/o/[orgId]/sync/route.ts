@@ -54,6 +54,8 @@ export async function POST(
         );
       } else if (op.kind === "checkin") {
         await db.registrations.checkIn(op.eventId, op.participantId);
+      } else if (op.kind === "paid") {
+        await db.registrations.setPaid(op.eventId, op.participantId, op.paid);
       } else {
         await db.healthReadings.create({
           id: op.id,

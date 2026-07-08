@@ -96,6 +96,17 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
 
 ---
 
+### Participant payments — Mode A ✅ done (2026-07-07)
+- Per-event price + host's own payment channel (link + instructions) — money
+  never touches the platform, so no processor can object to any host's
+  practice. Set in event Settings → Payment.
+- Public registration shows the price up front and a "Pay now" box after
+  registering; participant portal shows Paid ✓ / $ due with the pay link.
+- Roster: $ paid / $ due chips, offline-capable Mark paid/unpaid toggle
+  (same outbox as check-ins), paid-count chip in the status strip.
+- Later: Mode B (Stripe Connect for mainstream hosts, platform fee) and
+  Mode C (high-risk gateway adapter) per the payments-posture decision below.
+
 ## Future considerations (decided 2026-07-06, not yet scheduled)
 - **Auth:** ADD Google OAuth alongside magic links (not a switch) once participant
   sign-ups come from strangers; magic link stays as universal fallback + claim

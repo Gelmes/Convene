@@ -151,6 +151,10 @@ model Event {
   publicRegistration   Boolean     @default(false)
   intakeFormTemplateId String?
   stageId              String? // attending this event satisfies that stage's event requirement
+  // Mode A payments: the host charges through THEIR channel; we only track.
+  priceCents           Int? // null = free event
+  paymentLink          String? // host's external link (Venmo, PayPal.me, their site…)
+  paymentInstructions  String? // e.g. "Venmo @host — include your name"
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
 
@@ -383,6 +387,7 @@ model EventRegistration {
   participantId  String
   status         RegistrationStatus @default(REGISTERED)
   source         RegistrationSource @default(HOST_ADDED)
+  paidAt         DateTime? // host-confirmed payment (Mode A tracking)
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 

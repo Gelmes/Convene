@@ -33,6 +33,9 @@ export async function getPortalData(userId: string, email?: string | null) {
               title: true,
               startsAt: true,
               location: true,
+              priceCents: true,
+              paymentLink: true,
+              paymentInstructions: true,
               // Only photos a participant may see — never PRIVATE ones.
               photos: {
                 where: { visibility: { in: ["PUBLIC", "PARTICIPANTS"] } },
