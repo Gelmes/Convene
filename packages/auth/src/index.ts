@@ -26,8 +26,23 @@ async function sendMagicLink(to: string, url: string): Promise<void> {
     body: JSON.stringify({
       from,
       to,
-      subject: "Your Convene sign-in link",
-      html: `<p>Click to sign in to Convene:</p><p><a href="${url}">${url}</a></p><p>This link expires shortly.</p>`,
+      subject: "Your Vitalgather sign-in link",
+      html: `
+        <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px">
+          <h2 style="color:#1c1917">Sign in to Vitalgather</h2>
+          <p style="color:#57534e;line-height:1.6">
+            Tap the button below to sign in. No password needed.
+          </p>
+          <a href="${url}"
+             style="display:inline-block;background:#059669;color:#fff;padding:12px 24px;
+                    border-radius:12px;text-decoration:none;font-weight:600">
+            Sign in
+          </a>
+          <p style="color:#a8a29e;font-size:12px;margin-top:24px">
+            This link is single-use and expires shortly. If you didn't request
+            it, you can safely ignore this email.
+          </p>
+        </div>`,
     }),
   });
 
