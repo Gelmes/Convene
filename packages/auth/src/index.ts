@@ -1,7 +1,13 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@convene/db";
 import NextAuth from "next-auth";
+import Google from "next-auth/providers/google";
 import Resend from "next-auth/providers/resend";
+
+/** Google shows up as a sign-in option only when its env vars are set. */
+export function googleEnabled(): boolean {
+  return Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
+}
 
 /**
  * Sends the magic-link email. In dev (or when RESEND_API_KEY is unset) the link
@@ -66,6 +72,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         await sendMagicLink(identifier, url);
       },
     }),
+    // Reads AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET. Linking by email is safe for
+    // Google (it verifies addresses), and required so existing magic-link
+    // users land in the SAME account when they switch to Google.
+    Google({ allowDangerousEmailAccountLinking: true }),
   ],
   callbacks: {
     session({ session, token }) {
