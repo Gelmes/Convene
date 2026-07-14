@@ -17,6 +17,16 @@ export function buildAnswers(
   const answers: FormAnswer[] = [];
   for (const q of questions) {
     const raw = formData.get(`q_${q.id}`);
+    if (q.type === "agreement") {
+      // Required checkbox; record explicit acceptance (with the doc name so the
+      // submission is self-describing about what was agreed to).
+      answers.push({
+        questionId: q.id,
+        label: q.label,
+        value: raw === "on" ? `Agreed${q.documentName ? ` — ${q.documentName}` : ""}` : "Not agreed",
+      });
+      continue;
+    }
     const value =
       q.type === "checkbox"
         ? raw === "on"

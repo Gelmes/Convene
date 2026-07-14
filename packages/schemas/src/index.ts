@@ -40,6 +40,7 @@ export const formQuestionTypeSchema = z.enum([
   "number",
   "select",
   "checkbox",
+  "agreement", // terms/waiver the participant must accept
 ]);
 export type FormQuestionType = z.infer<typeof formQuestionTypeSchema>;
 
@@ -49,8 +50,20 @@ export const formQuestionSchema = z.object({
   type: formQuestionTypeSchema,
   required: z.boolean().default(false),
   options: z.array(z.string().min(1).max(100)).max(20).optional(), // for "select"
+  // Agreement type only:
+  agreementText: z.string().max(20000).optional(), // host-pasted terms
+  documentKey: z.string().max(300).optional(), // R2 key of an uploaded PDF/image
+  documentName: z.string().max(200).optional(), // original filename, for display
 });
 export type FormQuestion = z.infer<typeof formQuestionSchema>;
+
+export const createAgreementSchema = z.object({
+  label: z.string().min(2, "Give the agreement a title").max(200),
+  agreementText: z.string().max(20000).optional(),
+  documentKey: z.string().max(300).optional(),
+  documentName: z.string().max(200).optional(),
+});
+export type CreateAgreementInput = z.infer<typeof createAgreementSchema>;
 
 export const formQuestionsSchema = z.array(formQuestionSchema).max(50);
 

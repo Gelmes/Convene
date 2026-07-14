@@ -121,10 +121,16 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
   form builder (host-supplied waiver text/PDF link + required checkbox; acceptance
   stored w/ timestamp + form version + audit). Full e-sign (DocuSign etc.) only on
   real demand. Vitalgather records assent; hosts own their legal text.
-- **Event-discovery hub (Meetup-like):** public searchable index over opted-in
-  events. Prereqs: categories/tags, geo location fields, org public profiles, SEO
-  listing pages. Sequence AFTER billing + public API + site generator (those feed
-  it hosts). No rewrite needed — layers on existing public event pages.
+- **Event-discovery hub (Meetup-like) — public-facing dashboard:** a public,
+  searchable homepage/dashboard where anyone can browse & search events/programs
+  and hosts opt in to list. This is where **featured / popular / trending**
+  showcases live (homepage rows). Prereqs: event image/thumbnail (above),
+  categories/tags, geo location fields (not free-text), org public profiles,
+  SEO-friendly listing pages, an "list publicly" opt-in per event, and a
+  ranking signal for popular/trending (registrations, recency, views).
+  Sequence AFTER billing (✅) + public API + site generator (those feed it
+  hosts — a directory is only as good as its supply). Layers on the existing
+  public `/r/[eventId]` pages; no rewrite.
 
 ## Operational TODOs (not code phases)
 - [x] Domain wired end-to-end (2026-07-07): app on https://vitalgather.com (Railway
@@ -145,6 +151,9 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
       default; board as an alternate view.
 - [ ] **Per-photo visibility toggle** — the enum exists
       (PUBLIC/PARTICIPANTS/PRIVATE, default PARTICIPANTS), just no UI to change it.
+- [ ] **Event image / thumbnail** — host uploads a cover image per event (R2,
+      reuse photo infra + sharp thumbnail). Shows on the public registration
+      page and is a prerequisite for the discovery hub's event cards.
 - [ ] **"Agreement" question type** — contracts-lite waiver checkbox; build when
       the first host asks (see Future considerations → Program contracts).
 - [ ] **Timezone handling** — everything currently assumes one implicit zone;

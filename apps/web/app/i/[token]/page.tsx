@@ -2,6 +2,7 @@ import { acceptInvite, getInviteByToken } from "@convene/db";
 import { acceptInviteSchema, formQuestionsSchema } from "@convene/schemas";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { withDocumentUrls } from "@/lib/agreements";
 import { buildAnswers } from "@/lib/forms";
 import { formatDateTime } from "@/lib/format";
 import { Brand, Button, Card, Input, PageShell } from "@/components/ui";
@@ -82,9 +83,10 @@ export default async function InviteClaim({
     );
   }
 
-  const questions = formQuestionsSchema.safeParse(invite.questions).success
-    ? invite.questions
-    : [];
+  const parsedQuestions = formQuestionsSchema.safeParse(invite.questions);
+  const questions = await withDocumentUrls(
+    parsedQuestions.success ? parsedQuestions.data : [],
+  );
 
   async function accept(formData: FormData) {
     "use server";

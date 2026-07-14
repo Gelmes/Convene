@@ -2,6 +2,7 @@ import { getPublicEvent, LimitError, registerForEventPublic } from "@convene/db"
 import { formQuestionsSchema, publicRegistrationSchema } from "@convene/schemas";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { withDocumentUrls } from "@/lib/agreements";
 import { buildAnswers } from "@/lib/forms";
 import { formatDateTime } from "@/lib/format";
 import { Brand, Button, Card, Input, PageShell } from "@/components/ui";
@@ -103,9 +104,10 @@ export default async function PublicRegistration({
     );
   }
 
-  const questions = formQuestionsSchema.safeParse(event.questions).success
-    ? event.questions
-    : [];
+  const parsedQuestions = formQuestionsSchema.safeParse(event.questions);
+  const questions = await withDocumentUrls(
+    parsedQuestions.success ? parsedQuestions.data : [],
+  );
 
   async function register(formData: FormData) {
     "use server";

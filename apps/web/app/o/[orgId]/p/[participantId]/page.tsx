@@ -2,6 +2,7 @@ import { createTenantClient, prisma } from "@convene/db";
 import { formAnswersSchema } from "@convene/schemas";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { withDocumentUrls } from "@/lib/agreements";
 import { buildAnswers, parseQuestions } from "@/lib/forms";
 import { sendInviteEmail } from "@/lib/mailer";
 import { requireMembership } from "@/lib/session";
@@ -34,6 +35,16 @@ export default async function ParticipantDetail({
   const origin = (process.env.AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
   const inviteUrl = activeInvite ? `${origin}/i/${activeInvite.token}` : null;
   const emailEnabled = Boolean(process.env.RESEND_API_KEY);
+
+  // Presign agreement documents per published form for the host-fill section.
+  const formQuestions = new Map(
+    await Promise.all(
+      publishedForms.map(
+        async (f) =>
+          [f.id, await withDocumentUrls(parseQuestions(f.questions))] as const,
+      ),
+    ),
+  );
 
   async function hostFill(formData: FormData) {
     "use server";
@@ -231,7 +242,7 @@ export default async function ParticipantDetail({
             Filing again records a new submission — history is preserved.
           </p>
           {publishedForms.map((form) => {
-            const questions = parseQuestions(form.questions);
+            const questions = formQuestions.get(form.id) ?? [];
             if (questions.length === 0) return null;
             return (
               <details key={form.id} className="mt-3 rounded-xl border border-stone-200">
