@@ -134,5 +134,45 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
 - [x] `RESEND_API_KEY` set on Railway.
 - [x] Renamed to **Vitalgather** (2026-07-06). Register vitalgather.com + .app, then wire domain (Railway custom domain, Resend verification, AUTH_URL/EMAIL_FROM).
 
+## Polish backlog (small, high-value, any order)
+- [x] **Google sign-in** — done 2026-07-07 (alongside magic links; email account
+      linking; button only shows when AUTH_GOOGLE_ID/SECRET set).
+- [ ] **Program progress on `/me`** — participants seeing their own journey
+      through a program (current stage + completed stages).
+- [ ] **BP trend chart** — turn the reading list into a line chart on the
+      participant detail page + portal.
+- [ ] **Kanban board view** for programs (columns by stage) — roster is the
+      default; board as an alternate view.
+- [ ] **Per-photo visibility toggle** — the enum exists
+      (PUBLIC/PARTICIPANTS/PRIVATE, default PARTICIPANTS), just no UI to change it.
+- [ ] **"Agreement" question type** — contracts-lite waiver checkbox; build when
+      the first host asks (see Future considerations → Program contracts).
+- [ ] **Timezone handling** — everything currently assumes one implicit zone;
+      needs a deliberate design pass before hosts in different time zones show up.
+
+## Operational TODOs (not code phases)
+- [ ] **Stripe go-live** — activate the Vitalgather Stripe account (business
+      details), swap `sk_test_` → `sk_live_` key, create the webhook in live mode
+      (~15 min). Only when ready to charge real money; test mode works fully today.
+- [ ] **Trademark filing** for Vitalgather (~$350 USPTO, optional, whenever
+      revenue justifies). No collisions found 2026-07-06.
+- [ ] **Cosmetic tech debt:** repo/folder + `@convene/*` package scope + Dexie DB
+      name still say "convene" (invisible to users; Dexie rename would orphan
+      queued offline data — leave it). Old grateful-balance-…up.railway.app still
+      serves alongside vitalgather.com.
+- [x] Domain wired end-to-end (2026-07-07): app on https://vitalgather.com (Railway
+      custom domain, port 8080, Cloudflare DNS-only CNAME), vitalgather.app 301→.com,
+      Resend domain verified, `EMAIL_FROM=Vitalgather <signin@vitalgather.com>`,
+      `AUTH_URL=https://vitalgather.com`. Emails now deliver to ANY address.
+- [x] `RESEND_API_KEY` set on Railway.
+- [x] Stripe TEST-mode billing live (2026-07-07): dedicated Vitalgather Stripe
+      account, `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` on Railway, webhook
+      → `/api/billing/webhook`. Verified upgrade + cancel-at-period-end.
+- [x] Google OAuth live (2026-07-07): `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` on
+      Railway, consent screen published, redirect `…/api/auth/callback/google`.
+- [x] Renamed to **Vitalgather** (2026-07-06).
+
 ## Suggested near-term focus
-**Phases 0 → 1** get you the single most valuable, demoable loop: run a real event and capture BP on your phone, offline. Everything after that is additive. I'd treat 0+1 as the first milestone before touching forms.
+**Run a real event on it.** The product is feature-complete for real use; field
+usage reorders this backlog better than planning can (every best improvement so
+far — declutter, check-in, save feedback, mobile fixes — came from real use).
