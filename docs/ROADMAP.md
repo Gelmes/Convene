@@ -139,6 +139,16 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
   "I have read and agree", acceptance recorded as a form submission (timestamp +
   form version + doc name). Full e-sign (DocuSign etc.) only on real demand.
   Vitalgather records assent; hosts own their legal text.
+- **Photo/media storage limits:** R2 storage is the one usage that costs real
+  money over time (R2 bills ~$0.015/GB-month *stored*, near-zero egress — so
+  volume sitting in the bucket is the cost lever, not bandwidth). Today photo
+  upload has **no** limit. `Photo.size` (bytes) is already recorded, so a per-org
+  total-storage cap drops into the existing limits model: add `storageBytes` to
+  `Plan.limits`, sum photo (+ event cover-image) bytes in the tenant layer,
+  enforce before upload like the count-based `assertWithinLimit`, and show a
+  storage meter on the org billing card (reuse the usage-meter UI). Tiers TBD
+  (e.g. Free ~250–500 MB, Pro ~5–10 GB) — pick numbers once real usage/cost is
+  known. Simpler stopgap if it bites sooner: a per-event photo *count* cap.
 - **Event-discovery hub (Meetup-like) — public-facing dashboard:** a public,
   searchable homepage/dashboard where anyone can browse & search events/programs
   and hosts opt in to list. This is where **featured / popular / trending**
