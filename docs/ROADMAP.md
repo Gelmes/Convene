@@ -157,8 +157,11 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
       page and is a prerequisite for the discovery hub's event cards.
 - [ ] **"Agreement" question type** — contracts-lite waiver checkbox; build when
       the first host asks (see Future considerations → Program contracts).
-- [ ] **Timezone handling** — everything currently assumes one implicit zone;
-      needs a deliberate design pass before hosts in different time zones show up.
+- [x] **Timezone handling** — done 2026-07-08. Events anchored to a venue IANA
+      timezone (Event.timezone); startsAt is a real UTC instant (DST-aware via
+      date-fns-tz); displayed in the event's zone with a label everywhere.
+      Non-event timestamps (BP/submissions/renewals) show in the viewer's local
+      zone via <LocalTime>.
 
 ## Operational TODOs (not code phases)
 - [ ] **Stripe go-live** — activate the Vitalgather Stripe account (business
