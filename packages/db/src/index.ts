@@ -6,7 +6,9 @@ export {
   acceptInvite,
   getInviteByToken,
   getPublicEvent,
+  listPublicEvents,
   registerForEventPublic,
+  type PublicEventCard,
   type PublicInvite,
   type PublicQuestion,
 } from "./public";

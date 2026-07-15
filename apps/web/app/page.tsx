@@ -23,11 +23,16 @@ export default async function Home() {
     <PageShell width="max-w-3xl">
       <div className="flex items-center justify-between">
         <Brand />
-        {session?.user ? null : (
-          <LinkButton href="/sign-in" variant="ghost" className="px-3 py-1.5 text-sm">
-            Sign in
+        <div className="flex items-center gap-1">
+          <LinkButton href="/discover" variant="ghost" className="px-3 py-1.5 text-sm">
+            Browse events
           </LinkButton>
-        )}
+          {session?.user ? null : (
+            <LinkButton href="/sign-in" variant="ghost" className="px-3 py-1.5 text-sm">
+              Sign in
+            </LinkButton>
+          )}
+        </div>
       </div>
 
       <div className="mt-16 sm:mt-24">

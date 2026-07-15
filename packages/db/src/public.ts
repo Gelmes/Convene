@@ -26,10 +26,79 @@ export interface PublicQuestion {
   options?: string[];
 }
 
+/** A card in the public /discover directory. */
+export interface PublicEventCard {
+  id: string;
+  title: string;
+  startsAt: Date;
+  timezone: string;
+  location: string | null;
+  imageThumbKey: string | null;
+  priceCents: number | null;
+  organizationName: string;
+  registrationCount: number;
+}
+
+/**
+ * The public event directory: upcoming events whose host opted into LISTED
+ * visibility. Optional free-text search over title / description / location /
+ * host name. Sort by soonest (default) or most-registered ("popular").
+ */
+export async function listPublicEvents(
+  opts: { q?: string; sort?: "soon" | "popular" } = {},
+): Promise<PublicEventCard[]> {
+  const q = opts.q?.trim();
+  const events = await prisma.event.findMany({
+    where: {
+      visibility: "LISTED",
+      startsAt: { gte: new Date() }, // only upcoming events
+      ...(q
+        ? {
+            OR: [
+              { title: { contains: q, mode: "insensitive" } },
+              { description: { contains: q, mode: "insensitive" } },
+              { location: { contains: q, mode: "insensitive" } },
+              { organization: { name: { contains: q, mode: "insensitive" } } },
+            ],
+          }
+        : {}),
+    },
+    orderBy:
+      opts.sort === "popular"
+        ? [{ registrations: { _count: "desc" } }, { startsAt: "asc" }]
+        : [{ startsAt: "asc" }],
+    take: 60,
+    select: {
+      id: true,
+      title: true,
+      startsAt: true,
+      timezone: true,
+      location: true,
+      imageThumbKey: true,
+      priceCents: true,
+      organization: { select: { name: true } },
+      _count: { select: { registrations: true } },
+    },
+  });
+
+  return events.map((e) => ({
+    id: e.id,
+    title: e.title,
+    startsAt: e.startsAt,
+    timezone: e.timezone,
+    location: e.location,
+    imageThumbKey: e.imageThumbKey,
+    priceCents: e.priceCents,
+    organizationName: e.organization.name,
+    registrationCount: e._count.registrations,
+  }));
+}
+
 /** Event info shown on the public registration page, or null if not public. */
 export async function getPublicEvent(eventId: string) {
   const event = await prisma.event.findFirst({
-    where: { id: eventId, publicRegistration: true },
+    // Both UNLISTED and LISTED events register through the shared /r link.
+    where: { id: eventId, visibility: { in: ["UNLISTED", "LISTED"] } },
     select: {
       id: true,
       title: true,

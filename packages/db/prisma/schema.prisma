@@ -149,7 +149,10 @@ model Event {
   endsAt               DateTime?
   status               EventStatus @default(UPCOMING)
   timezone             String      @default("UTC") // IANA zone the event happens in; startsAt is a UTC instant
-  publicRegistration   Boolean     @default(false)
+  // Discoverability: CLOSED (no public page) / UNLISTED (link-only /r page) /
+  // LISTED (also surfaced in the public /discover directory). Replaces the old
+  // publicRegistration bool; UNLISTED preserves that link-only behavior.
+  visibility           EventVisibility @default(CLOSED)
   imageKey             String? // R2 key of the cover image (webp, ~1280w)
   imageThumbKey        String? // R2 key of the card thumbnail (webp, 600x400)
   intakeFormTemplateId String?
@@ -171,6 +174,7 @@ model Event {
   photos          Photo[]
 
   @@index([organizationId])
+  @@index([visibility, startsAt]) // public /discover listing query
 }
 
 // ---------------------------------------------------------------------------
@@ -408,6 +412,12 @@ enum EventStatus {
   ACTIVE
   COMPLETED
   CANCELLED
+}
+
+enum EventVisibility {
+  CLOSED // no public registration page
+  UNLISTED // registerable via the shared /r link, but not in the directory
+  LISTED // registerable AND shown in the public /discover directory
 }
 
 enum RegistrationStatus {

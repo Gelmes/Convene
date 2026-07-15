@@ -177,10 +177,14 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
           data: { intakeFormTemplateId: formTemplateId },
         });
       },
-      setPublicRegistration(eventId: string, enabled: boolean) {
+      /** Set discoverability: CLOSED / UNLISTED (link-only) / LISTED (directory). */
+      setVisibility(
+        eventId: string,
+        visibility: "CLOSED" | "UNLISTED" | "LISTED",
+      ) {
         return prisma.event.updateMany({
           where: { id: eventId, organizationId },
-          data: { publicRegistration: enabled },
+          data: { visibility },
         });
       },
       rename(eventId: string, title: string) {

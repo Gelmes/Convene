@@ -1,5 +1,9 @@
 import { createTenantClient } from "@convene/db";
-import { paymentSettingsSchema, updateEventSchema } from "@convene/schemas";
+import {
+  eventVisibilitySchema,
+  paymentSettingsSchema,
+  updateEventSchema,
+} from "@convene/schemas";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -24,6 +28,27 @@ import { CopyField } from "@/components/copy-field";
 import { FieldCapture, type RosterEntry } from "@/components/field-capture";
 import { PhotoUploader } from "@/components/photo-uploader";
 import { EventImageUploader } from "@/components/event-image-uploader";
+
+const VISIBILITY_OPTIONS = [
+  {
+    value: "CLOSED",
+    label: "Closed",
+    badge: "Closed",
+    hint: "No public page — only your team can add participants.",
+  },
+  {
+    value: "UNLISTED",
+    label: "Link-only",
+    badge: "Link-only",
+    hint: "Anyone with the link below can register. Not shown in the public directory.",
+  },
+  {
+    value: "LISTED",
+    label: "In directory",
+    badge: "In directory",
+    hint: "Registerable via the link AND surfaced in the public event directory.",
+  },
+] as const;
 
 export default async function EventDetail({
   params,
@@ -109,13 +134,13 @@ export default async function EventDetail({
     revalidatePath(`/o/${orgId}/e/${eventId}`);
   }
 
-  async function togglePublic() {
+  async function setVisibility(formData: FormData) {
     "use server";
     const { userId } = await requireMembership(orgId);
+    const parsed = eventVisibilitySchema.safeParse(formData.get("visibility"));
+    if (!parsed.success) return;
     const db = createTenantClient(orgId, userId);
-    const current = await db.events.get(eventId);
-    if (!current) return;
-    await db.events.setPublicRegistration(eventId, !current.publicRegistration);
+    await db.events.setVisibility(eventId, parsed.data);
     revalidatePath(`/o/${orgId}/e/${eventId}`);
   }
 
@@ -292,7 +317,7 @@ export default async function EventDetail({
       <Card className="mt-6 p-5">
         <h3 className="font-medium">Cover image</h3>
         <p className="mt-1 text-xs text-stone-400">
-          Shown on the public registration page (and event listings later).
+          Shown on the public registration page and in the event directory.
         </p>
         <div className="mt-3">
           {photosEnabled ? (
@@ -314,26 +339,54 @@ export default async function EventDetail({
       <Card className="mt-6 p-5">
         <div className="flex items-center justify-between gap-3">
           <h3 className="font-medium">Public registration</h3>
-          <Badge>{event.publicRegistration ? "Open" : "Closed"}</Badge>
+          <Badge>
+            {VISIBILITY_OPTIONS.find((o) => o.value === event.visibility)?.badge ??
+              "Closed"}
+          </Badge>
         </div>
 
-        <form action={togglePublic} className="mt-3">
-          <Button
-            variant={event.publicRegistration ? "ghost" : "accent"}
-            className="w-full"
-          >
-            {event.publicRegistration
-              ? "Close public registration"
-              : "Open public registration"}
-          </Button>
+        <form
+          action={setVisibility}
+          className="mt-3 grid grid-cols-3 gap-1 rounded-2xl bg-stone-200/50 p-1"
+        >
+          {VISIBILITY_OPTIONS.map((o) => {
+            const active = event.visibility === o.value;
+            return (
+              <button
+                key={o.value}
+                name="visibility"
+                value={o.value}
+                aria-current={active ? "true" : undefined}
+                className={`rounded-xl px-2 py-2 text-center text-sm font-medium transition-all duration-150 ${
+                  active
+                    ? "bg-white text-stone-900 shadow-sm"
+                    : "text-stone-500 hover:text-stone-800"
+                }`}
+              >
+                {o.label}
+              </button>
+            );
+          })}
         </form>
+        <p className="mt-2 text-xs text-stone-400">
+          {VISIBILITY_OPTIONS.find((o) => o.value === event.visibility)?.hint}
+        </p>
 
-        {event.publicRegistration ? (
+        {event.visibility !== "CLOSED" ? (
           <div className="mt-4 space-y-2">
             <p className="text-xs font-medium text-stone-500">
               Share this link — anyone with it can register:
             </p>
             <CopyField value={publicUrl} />
+            {event.visibility === "LISTED" ? (
+              <p className="text-xs text-emerald-700">
+                Also live in the{" "}
+                <Link href="/discover" className="underline hover:text-emerald-800">
+                  public directory
+                </Link>
+                .
+              </p>
+            ) : null}
           </div>
         ) : null}
 

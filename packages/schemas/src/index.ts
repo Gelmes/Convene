@@ -160,6 +160,10 @@ export type PaymentSettingsInput = z.infer<typeof paymentSettingsSchema>;
 
 export const advanceModeSchema = z.enum(["MANUAL", "AUTO"]);
 
+/** Event discoverability — see EventVisibility in the Prisma schema. */
+export const eventVisibilitySchema = z.enum(["CLOSED", "UNLISTED", "LISTED"]);
+export type EventVisibilityInput = z.infer<typeof eventVisibilitySchema>;
+
 export const acceptInviteSchema = z.object({
   email: emailSchema.optional(),
   phone: z.string().max(30).optional(),

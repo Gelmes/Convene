@@ -107,6 +107,23 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
 - Later: Mode B (Stripe Connect for mainstream hosts, platform fee) and
   Mode C (high-risk gateway adapter) per the payments-posture decision below.
 
+### Event-discovery hub — Slice 1 ✅ done (2026-07-14)
+- **Visibility model:** `Event.publicRegistration` bool expanded to an
+  `EventVisibility` enum — **CLOSED** (no public page) / **UNLISTED** (link-only
+  `/r` page, = the old `true`) / **LISTED** (registerable AND shown in the
+  directory). Migration maps every existing public event → UNLISTED, so nothing
+  visible changed for current hosts; LISTED is an explicit opt-in. Set via a
+  3-way control in event Settings → Public registration.
+- **Public directory** at `/discover`: upcoming LISTED events, thumbnail cards
+  (reusing the R2 card thumb), free-text search over title/description/location/
+  host name, and a **Popular** sort (by registration count) alongside **Soonest**.
+  Registration count shows as an "N going" chip — the first ranking signal.
+  Linked from the marketing homepage ("Browse events").
+- **Deferred to later slices:** categories/tags, structured geo fields, org
+  public profiles, SEO listing pages, view-based trending, and featured/homepage
+  rows (the landing flips to content-first once supply grows — front door stays
+  marketing for now to attract hosts).
+
 ## Future considerations (decided 2026-07-06, not yet scheduled)
 - **Auth:** ADD Google OAuth alongside magic links (not a switch) once participant
   sign-ups come from strangers; magic link stays as universal fallback + claim
@@ -125,13 +142,13 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
 - **Event-discovery hub (Meetup-like) — public-facing dashboard:** a public,
   searchable homepage/dashboard where anyone can browse & search events/programs
   and hosts opt in to list. This is where **featured / popular / trending**
-  showcases live (homepage rows). Prereqs: event image/thumbnail (above),
-  categories/tags, geo location fields (not free-text), org public profiles,
-  SEO-friendly listing pages, an event **visibility** state (expand today's `publicRegistration` bool → Closed / Unlisted-link-only / Listed-in-dashboard), and a
-  ranking signal for popular/trending (registrations, recency, views).
-  Sequence AFTER billing (✅) + public API + site generator (those feed it
-  hosts — a directory is only as good as its supply). Layers on the existing
-  public `/r/[eventId]` pages; no rewrite.
+  showcases live (homepage rows). **Slice 1 shipped 2026-07-14** — visibility
+  enum, `/discover` search + Popular sort (see the dated section above). Still
+  ahead: categories/tags, geo location fields (not free-text), org public
+  profiles, SEO-friendly listing pages, view-based trending, and content-first
+  homepage rows. Sequence the supply-side (public API + site generator) alongside
+  — a directory is only as good as its supply. Layers on the existing public
+  `/r/[eventId]` pages; no rewrite.
 
 ## Operational TODOs (not code phases)
 - [x] Domain wired end-to-end (2026-07-07): app on https://vitalgather.com (Railway
