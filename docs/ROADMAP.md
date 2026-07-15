@@ -117,10 +117,11 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
   adapters later). (b) Participant→host payments = later marketplace phase on
   Stripe **Connect**; BNPL/split payments (Affirm/Klarna/Afterpay) come as Stripe
   payment methods, no direct Affirm integration needed.
-- **Program contracts:** when requested, ship an "Agreement" question type in the
-  form builder (host-supplied waiver text/PDF link + required checkbox; acceptance
-  stored w/ timestamp + form version + audit). Full e-sign (DocuSign etc.) only on
-  real demand. Vitalgather records assent; hosts own their legal text.
+- **Program contracts:** ✅ shipped 2026-07-07 as the "agreement" question type —
+  host pastes terms and/or uploads a PDF/image (R2), participant must check
+  "I have read and agree", acceptance recorded as a form submission (timestamp +
+  form version + doc name). Full e-sign (DocuSign etc.) only on real demand.
+  Vitalgather records assent; hosts own their legal text.
 - **Event-discovery hub (Meetup-like) — public-facing dashboard:** a public,
   searchable homepage/dashboard where anyone can browse & search events/programs
   and hosts opt in to list. This is where **featured / popular / trending**
