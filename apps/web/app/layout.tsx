@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   title: "Vitalgather",
   description: "Event host + participant health-data manager",
   manifest: "/manifest.webmanifest",
-  icons: { icon: "/icon.svg" },
+  icons: { icon: "/icon.svg", apple: "/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {
