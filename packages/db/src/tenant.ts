@@ -189,6 +189,24 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
           data: { title },
         });
       },
+      /** Set (or clear) the cover image. Returns any previous keys to clean up. */
+      async setImage(
+        eventId: string,
+        keys: { imageKey: string | null; imageThumbKey: string | null },
+      ): Promise<string[]> {
+        const prev = await prisma.event.findFirst({
+          where: { id: eventId, organizationId },
+          select: { imageKey: true, imageThumbKey: true },
+        });
+        if (!prev) throw new Error("Event not found in this organization");
+        await prisma.event.updateMany({
+          where: { id: eventId, organizationId },
+          data: keys,
+        });
+        return [prev.imageKey, prev.imageThumbKey].filter(
+          (k): k is string => Boolean(k) && k !== keys.imageKey && k !== keys.imageThumbKey,
+        );
+      },
       /** Edit the event's core details (title, description, location, start). */
       update(
         eventId: string,
@@ -218,16 +236,25 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
        * the binaries.
        */
       async delete(eventId: string): Promise<string[]> {
-        const photos = await prisma.photo.findMany({
-          where: { eventId, organizationId },
-          select: { storageKey: true, thumbKey: true },
-        });
+        const [photos, event] = await Promise.all([
+          prisma.photo.findMany({
+            where: { eventId, organizationId },
+            select: { storageKey: true, thumbKey: true },
+          }),
+          prisma.event.findFirst({
+            where: { id: eventId, organizationId },
+            select: { imageKey: true, imageThumbKey: true },
+          }),
+        ]);
         const result = await prisma.event.deleteMany({
           where: { id: eventId, organizationId },
         });
-        return result.count > 0
-          ? photos.flatMap((p) => [p.storageKey, ...(p.thumbKey ? [p.thumbKey] : [])])
-          : [];
+        if (result.count === 0) return [];
+        return [
+          ...photos.flatMap((p) => [p.storageKey, ...(p.thumbKey ? [p.thumbKey] : [])]),
+          ...(event?.imageKey ? [event.imageKey] : []),
+          ...(event?.imageThumbKey ? [event.imageThumbKey] : []),
+        ];
       },
       /** Mode A payment settings: price + the host's own payment channel. */
       setPayment(

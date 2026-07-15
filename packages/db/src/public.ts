@@ -37,6 +37,7 @@ export async function getPublicEvent(eventId: string) {
       location: true,
       startsAt: true,
       timezone: true,
+      imageKey: true,
       priceCents: true,
       paymentLink: true,
       paymentInstructions: true,

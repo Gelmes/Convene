@@ -47,8 +47,21 @@ export default async function OrgHome({
   ]);
 
   const isPro = org?.plan?.id === "pro";
-
   const canManage = role === "OWNER" || role === "ADMIN";
+
+  // Presign event card thumbnails (small; only events that have one).
+  const { r2Configured, r2PresignGet } = await import("@/lib/r2");
+  const thumbEnabled = r2Configured();
+  const eventThumbs = new Map<string, string>();
+  if (thumbEnabled) {
+    await Promise.all(
+      events
+        .filter((e) => e.imageThumbKey)
+        .map(async (e) => {
+          eventThumbs.set(e.id, await r2PresignGet(e.imageThumbKey!));
+        }),
+    );
+  }
 
   async function createEvent(formData: FormData) {
     "use server";
@@ -255,8 +268,16 @@ export default async function OrgHome({
             events.map((e) => (
               <li key={e.id}>
                 <Link href={`/o/${orgId}/e/${e.id}`} className="group block">
-                  <Card className="flex items-center justify-between p-4 transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md">
-                    <span className="min-w-0">
+                  <Card className="flex items-center justify-between gap-3 p-4 transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md">
+                    {eventThumbs.has(e.id) ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={eventThumbs.get(e.id)}
+                        alt=""
+                        className="h-12 w-12 shrink-0 rounded-lg object-cover"
+                      />
+                    ) : null}
+                    <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium text-stone-900">
                         {e.title}
                       </span>

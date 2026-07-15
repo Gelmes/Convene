@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { withDocumentUrls } from "@/lib/agreements";
 import { buildAnswers } from "@/lib/forms";
 import { formatDateTime } from "@/lib/format";
+import { r2Configured, r2PresignGet } from "@/lib/r2";
 import { Brand, Button, Card, Input, PageShell } from "@/components/ui";
 import { QuestionFields } from "@/components/question-fields";
 
@@ -108,6 +109,10 @@ export default async function PublicRegistration({
   const questions = await withDocumentUrls(
     parsedQuestions.success ? parsedQuestions.data : [],
   );
+  const coverUrl =
+    r2Configured() && event.imageKey
+      ? await r2PresignGet(event.imageKey)
+      : null;
 
   async function register(formData: FormData) {
     "use server";
@@ -137,7 +142,16 @@ export default async function PublicRegistration({
         <Brand />
       </div>
 
-      <Card className="mt-10 p-6 sm:p-8">
+      <Card className="mt-10 overflow-hidden">
+        {coverUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={coverUrl}
+            alt={event.title}
+            className="aspect-[16/9] w-full object-cover"
+          />
+        ) : null}
+        <div className="p-6 sm:p-8">
         <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
           {event.organization.name}
         </p>
@@ -178,6 +192,7 @@ export default async function PublicRegistration({
             information you provide.
           </p>
         </form>
+        </div>
       </Card>
     </PageShell>
   );

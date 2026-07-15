@@ -23,6 +23,7 @@ import { SaveButton } from "@/components/save-button";
 import { CopyField } from "@/components/copy-field";
 import { FieldCapture, type RosterEntry } from "@/components/field-capture";
 import { PhotoUploader } from "@/components/photo-uploader";
+import { EventImageUploader } from "@/components/event-image-uploader";
 
 export default async function EventDetail({
   params,
@@ -54,6 +55,10 @@ export default async function EventDetail({
 
   const origin = process.env.AUTH_URL ?? "http://localhost:3000";
   const publicUrl = `${origin.replace(/\/$/, "")}/r/${eventId}`;
+  const coverUrl =
+    photosEnabled && event.imageKey
+      ? await r2PresignGet(event.imageKey)
+      : undefined;
   // Presigning is only needed when the Photos tab is actually shown.
   const photoUrls =
     tab === "photos"
@@ -283,6 +288,28 @@ export default async function EventDetail({
 
       {tab === "settings" ? (
       <>
+      {/* --- Cover image --- */}
+      <Card className="mt-6 p-5">
+        <h3 className="font-medium">Cover image</h3>
+        <p className="mt-1 text-xs text-stone-400">
+          Shown on the public registration page (and event listings later).
+        </p>
+        <div className="mt-3">
+          {photosEnabled ? (
+            <EventImageUploader
+              orgId={orgId}
+              eventId={eventId}
+              currentUrl={coverUrl}
+            />
+          ) : (
+            <p className="rounded-xl bg-stone-50 p-3 text-sm text-stone-500 ring-1 ring-inset ring-stone-200">
+              Image storage isn&apos;t configured — set the R2 environment
+              variables on Railway.
+            </p>
+          )}
+        </div>
+      </Card>
+
       {/* --- Registration settings --- */}
       <Card className="mt-6 p-5">
         <div className="flex items-center justify-between gap-3">
