@@ -252,7 +252,9 @@ export default async function OrgHome({
                   <TimezoneSelect name="timezone" />
                 </label>
               </div>
-              <Button className="w-full">Create event</Button>
+              <SaveButton className="w-full" savedLabel="Event created ✓">
+                Create event
+              </SaveButton>
             </form>
           </Card>
         </Rollout>
