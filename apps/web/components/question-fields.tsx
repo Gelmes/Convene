@@ -1,5 +1,6 @@
 import type { FormQuestion } from "@convene/schemas";
 import { Input, Select, Textarea } from "@/components/ui";
+import { AgreementField } from "@/components/agreement-field";
 
 type RenderableQuestion = FormQuestion & { documentUrl?: string };
 
@@ -11,44 +12,57 @@ export function QuestionFields({
 }) {
   return (
     <>
-      {questions.map((q) =>
-        q.type === "agreement" ? (
-          <div
-            key={q.id}
-            className="rounded-xl border border-stone-200 bg-stone-50/60 p-4"
-          >
-            <p className="text-sm font-semibold text-stone-800">{q.label}</p>
-            {q.agreementText ? (
-              <div className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-lg border border-stone-200 bg-white p-3 text-xs leading-relaxed text-stone-600">
-                {q.agreementText}
+      {questions.map((q) => {
+        if (q.type === "agreement") {
+          return (
+            <AgreementField
+              key={q.id}
+              id={q.id}
+              label={q.label}
+              agreementText={q.agreementText}
+              documentUrl={q.documentUrl}
+              documentName={q.documentName}
+            />
+          );
+        }
+
+        // Choice groups (radio / checkboxes) get their own block, not a <label>.
+        if (q.type === "radio" || q.type === "checkboxes") {
+          const inputType = q.type === "radio" ? "radio" : "checkbox";
+          return (
+            <fieldset key={q.id} className="block">
+              <legend className="text-sm font-medium text-stone-700">
+                {q.label}
+                {q.required ? <span className="text-red-500"> *</span> : null}
+                {q.type === "checkboxes" ? (
+                  <span className="ml-1 font-normal text-stone-400">
+                    (select all that apply)
+                  </span>
+                ) : null}
+              </legend>
+              <div className="mt-1.5 space-y-1.5">
+                {(q.options ?? []).map((opt) => (
+                  <label
+                    key={opt}
+                    className="flex items-center gap-2 text-sm font-normal text-stone-600"
+                  >
+                    <input
+                      type={inputType}
+                      name={`q_${q.id}`}
+                      value={opt}
+                      required={q.type === "radio" && q.required}
+                      className="h-4 w-4 border-stone-300 accent-emerald-600"
+                    />
+                    {opt}
+                  </label>
+                ))}
               </div>
-            ) : null}
-            {q.documentUrl ? (
-              <a
-                href={q.documentUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-800"
-              >
-                📄 View {q.documentName ?? "document"} ↗
-              </a>
-            ) : null}
-            <label className="mt-3 flex items-center gap-2 text-sm font-medium text-stone-700">
-              <input
-                type="checkbox"
-                name={`q_${q.id}`}
-                required
-                className="h-4 w-4 rounded border-stone-300 accent-emerald-600"
-              />
-              I have read and agree
-              <span className="text-red-500">*</span>
-            </label>
-          </div>
-        ) : (
-          <label
-            key={q.id}
-            className="block text-sm font-medium text-stone-700"
-          >
+            </fieldset>
+          );
+        }
+
+        return (
+          <label key={q.id} className="block text-sm font-medium text-stone-700">
             {q.label}
             {q.required ? <span className="text-red-500"> *</span> : null}
             {q.type === "textarea" ? (
@@ -94,8 +108,8 @@ export function QuestionFields({
               />
             )}
           </label>
-        ),
-      )}
+        );
+      })}
     </>
   );
 }

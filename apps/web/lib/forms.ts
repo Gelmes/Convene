@@ -16,17 +16,31 @@ export function buildAnswers(
 ): FormAnswer[] {
   const answers: FormAnswer[] = [];
   for (const q of questions) {
+    // Multi-select: join every checked option.
+    if (q.type === "checkboxes") {
+      const values = formData
+        .getAll(`q_${q.id}`)
+        .filter((v): v is string => typeof v === "string");
+      answers.push({ questionId: q.id, label: q.label, value: values.join(", ") });
+      continue;
+    }
+
     const raw = formData.get(`q_${q.id}`);
+
     if (q.type === "agreement") {
       // Required checkbox; record explicit acceptance (with the doc name so the
       // submission is self-describing about what was agreed to).
       answers.push({
         questionId: q.id,
         label: q.label,
-        value: raw === "on" ? `Agreed${q.documentName ? ` — ${q.documentName}` : ""}` : "Not agreed",
+        value:
+          raw === "on"
+            ? `Agreed${q.documentName ? ` — ${q.documentName}` : ""}`
+            : "Not agreed",
       });
       continue;
     }
+
     const value =
       q.type === "checkbox"
         ? raw === "on"

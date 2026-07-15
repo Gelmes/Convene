@@ -38,11 +38,16 @@ export const formQuestionTypeSchema = z.enum([
   "text",
   "textarea",
   "number",
-  "select",
-  "checkbox",
+  "select", // dropdown, single choice
+  "radio", // multiple choice, single select
+  "checkboxes", // multiple choice, select any
+  "checkbox", // single Yes/No toggle
   "agreement", // terms/waiver the participant must accept
 ]);
 export type FormQuestionType = z.infer<typeof formQuestionTypeSchema>;
+
+/** Types that carry an options list. */
+export const OPTION_TYPES = ["select", "radio", "checkboxes"] as const;
 
 export const formQuestionSchema = z.object({
   id: z.string().uuid(),

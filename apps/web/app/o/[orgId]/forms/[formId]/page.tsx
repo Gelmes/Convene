@@ -1,18 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { createTenantClient } from "@convene/db";
-import {
-  createAgreementSchema,
-  formQuestionSchema,
-  renameSchema,
-} from "@convene/schemas";
+import { formQuestionSchema, OPTION_TYPES, renameSchema } from "@convene/schemas";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { parseQuestions } from "@/lib/forms";
 import { r2Delete } from "@/lib/r2";
 import { requireMembership } from "@/lib/session";
-import { BackLink, Badge, Button, Card, Input, PageShell, Select } from "@/components/ui";
-import { AgreementBuilder } from "@/components/agreement-builder";
+import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm";
+import { QuestionBuilder } from "@/components/question-builder";
 import { Rollout } from "@/components/rollout";
 import { SaveButton } from "@/components/save-button";
 
@@ -21,9 +17,13 @@ const TYPE_LABELS: Record<string, string> = {
   textarea: "Paragraph",
   number: "Number",
   select: "Dropdown",
-  checkbox: "Checkbox",
+  radio: "Multiple choice",
+  checkboxes: "Checkboxes",
+  checkbox: "Yes / No",
   agreement: "Agreement",
 };
+
+const OPTION_TYPE_SET = new Set<string>(OPTION_TYPES);
 
 export default async function FormBuilder({
   params,
@@ -47,18 +47,34 @@ export default async function FormBuilder({
     if (!form) return;
 
     const type = String(formData.get("type") ?? "text");
-    const optionsRaw = String(formData.get("options") ?? "");
+    const isOptions = OPTION_TYPE_SET.has(type);
+    const options = isOptions
+      ? formData
+          .getAll("option")
+          .map((o) => String(o).trim())
+          .filter(Boolean)
+      : undefined;
+
+    // Choice types need at least two options to be meaningful.
+    if (isOptions && (options?.length ?? 0) < 2) return;
+
     const parsed = formQuestionSchema.safeParse({
       id: randomUUID(),
       label: formData.get("label"),
       type,
       required: formData.get("required") === "on",
-      options:
-        type === "select"
-          ? optionsRaw
-              .split(",")
-              .map((o) => o.trim())
-              .filter(Boolean)
+      options,
+      agreementText:
+        type === "agreement"
+          ? (formData.get("agreementText") as string)?.trim() || undefined
+          : undefined,
+      documentKey:
+        type === "agreement"
+          ? (formData.get("documentKey") as string) || undefined
+          : undefined,
+      documentName:
+        type === "agreement"
+          ? (formData.get("documentName") as string) || undefined
           : undefined,
     });
     if (!parsed.success) return;
@@ -66,39 +82,6 @@ export default async function FormBuilder({
     await db.forms.updateQuestions(formId, [
       ...parseQuestions(form.questions),
       parsed.data,
-    ]);
-    revalidatePath(`/o/${orgId}/forms/${formId}`);
-  }
-
-  async function addAgreement(formData: FormData) {
-    "use server";
-    const { userId } = await requireMembership(orgId);
-    const db = createTenantClient(orgId, userId);
-    const form = await db.forms.get(formId);
-    if (!form) return;
-
-    const parsed = createAgreementSchema.safeParse({
-      label: formData.get("label"),
-      agreementText: (formData.get("agreementText") as string)?.trim() || undefined,
-      documentKey: (formData.get("documentKey") as string) || undefined,
-      documentName: (formData.get("documentName") as string) || undefined,
-    });
-    if (!parsed.success) return;
-
-    const question = formQuestionSchema.safeParse({
-      id: randomUUID(),
-      label: parsed.data.label,
-      type: "agreement",
-      required: true,
-      agreementText: parsed.data.agreementText,
-      documentKey: parsed.data.documentKey,
-      documentName: parsed.data.documentName,
-    });
-    if (!question.success) return;
-
-    await db.forms.updateQuestions(formId, [
-      ...parseQuestions(form.questions),
-      question.data,
     ]);
     revalidatePath(`/o/${orgId}/forms/${formId}`);
   }
@@ -238,50 +221,7 @@ export default async function FormBuilder({
           label="+ Add question"
           accent
         >
-          <Card className="p-4">
-            <form action={addQuestion} className="space-y-3">
-              <Input
-                name="label"
-                required
-                placeholder="Question, e.g. Any medical conditions?"
-              />
-              <div className="flex flex-wrap items-center gap-3">
-                <Select name="type">
-                  {Object.entries(TYPE_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </Select>
-                <label className="flex items-center gap-2 text-sm text-stone-600">
-                  <input
-                    type="checkbox"
-                    name="required"
-                    className="h-4 w-4 rounded border-stone-300 accent-emerald-600"
-                  />
-                  Required
-                </label>
-              </div>
-              <Input
-                name="options"
-                placeholder="Dropdown options, comma-separated (only for Dropdown)"
-              />
-              <Button className="w-full">Add question</Button>
-            </form>
-          </Card>
-        </Rollout>
-      </div>
-
-      <div className="mt-3">
-        <Rollout
-          heading={
-            <h2 className="text-sm font-medium text-stone-600">
-              Waiver / agreement
-            </h2>
-          }
-          label="+ Add agreement"
-        >
-          <AgreementBuilder orgId={orgId} formId={formId} action={addAgreement} />
+          <QuestionBuilder orgId={orgId} formId={formId} action={addQuestion} />
         </Rollout>
       </div>
 
