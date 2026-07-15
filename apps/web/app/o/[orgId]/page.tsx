@@ -1,5 +1,15 @@
-import { createTenantClient, getUsage, LimitError, prisma } from "@convene/db";
-import { createEventSchema, renameSchema } from "@convene/schemas";
+import {
+  createTenantClient,
+  getUsage,
+  inviteMember,
+  LimitError,
+  listMembers,
+  prisma,
+  removeMember,
+  setMemberRole,
+} from "@convene/db";
+import { createEventSchema, inviteMemberSchema, renameSchema } from "@convene/schemas";
+import { sendMemberInviteEmail } from "@/lib/mailer";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -12,10 +22,10 @@ import {
   PRO_PRICES,
   type BillingInterval,
 } from "@/lib/billing";
-import { requireMembership } from "@/lib/session";
+import { requireManage, requireMembership } from "@/lib/session";
 import { formatDateTime, wallClockToUtc } from "@/lib/format";
-import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
-import { TypedDeleteConfirm } from "@/components/confirm";
+import { BackLink, Badge, Button, Card, Input, PageShell, Select } from "@/components/ui";
+import { ConfirmButton, TypedDeleteConfirm } from "@/components/confirm";
 import { Rollout } from "@/components/rollout";
 import { SaveButton } from "@/components/save-button";
 
@@ -48,6 +58,7 @@ export default async function OrgHome({
 
   const isPro = org?.plan?.id === "pro";
   const canManage = role === "OWNER" || role === "ADMIN";
+  const members = canManage ? await listMembers(orgId, userId) : [];
 
   // Presign event card thumbnails (small; only events that have one).
   const { r2Configured, r2PresignGet } = await import("@/lib/r2");
@@ -65,7 +76,7 @@ export default async function OrgHome({
 
   async function createEvent(formData: FormData) {
     "use server";
-    const { userId } = await requireMembership(orgId);
+    const { userId } = await requireManage(orgId);
     const parsed = createEventSchema.safeParse({
       title: formData.get("title"),
       location: formData.get("location") || undefined,
@@ -85,6 +96,47 @@ export default async function OrgHome({
       if (err instanceof LimitError) redirect(`/o/${orgId}?limit=events`);
       throw err;
     }
+    revalidatePath(`/o/${orgId}`);
+  }
+
+  async function inviteMemberAction(formData: FormData) {
+    "use server";
+    const { userId } = await requireManage(orgId);
+    const parsed = inviteMemberSchema.safeParse({
+      email: formData.get("email"),
+      role: formData.get("role"),
+    });
+    if (!parsed.success) return;
+    const result = await inviteMember(orgId, userId, parsed.data.email, parsed.data.role);
+    if (result.status === "invited" || result.status === "reinvited") {
+      const org = await prisma.organization.findUnique({
+        where: { id: orgId },
+        select: { name: true },
+      });
+      const origin = process.env.AUTH_URL ?? "http://localhost:3000";
+      await sendMemberInviteEmail({
+        to: result.email,
+        orgName: org?.name ?? "An organization",
+        role: parsed.data.role,
+        url: `${origin.replace(/\/$/, "")}/dashboard`,
+      }).catch(() => {});
+    }
+    revalidatePath(`/o/${orgId}`);
+  }
+
+  async function setMemberRoleAction(formData: FormData) {
+    "use server";
+    const { userId } = await requireManage(orgId);
+    const role = formData.get("role");
+    if (role !== "ADMIN" && role !== "FACILITATOR") return;
+    await setMemberRole(orgId, userId, String(formData.get("membershipId")), role);
+    revalidatePath(`/o/${orgId}`);
+  }
+
+  async function removeMemberAction(formData: FormData) {
+    "use server";
+    const { userId } = await requireManage(orgId);
+    await removeMember(orgId, userId, String(formData.get("membershipId")));
     revalidatePath(`/o/${orgId}`);
   }
 
@@ -211,6 +263,7 @@ export default async function OrgHome({
         ) : (
           title
         )}
+        {canManage ? (
         <nav className="mt-2 flex gap-1">
           <Link
             href={`/o/${orgId}/programs`}
@@ -225,9 +278,11 @@ export default async function OrgHome({
             Intake forms
           </Link>
         </nav>
+        ) : null}
       </div>
 
       <div className="mt-8">
+        {canManage ? (
         <Rollout
           heading={<h2 className="text-lg font-semibold">Events</h2>}
           label="+ Add event"
@@ -258,6 +313,9 @@ export default async function OrgHome({
             </form>
           </Card>
         </Rollout>
+        ) : (
+          <h2 className="text-lg font-semibold">Events</h2>
+        )}
 
         <ul className="mt-3 space-y-3">
           {events.length === 0 ? (
@@ -307,6 +365,101 @@ export default async function OrgHome({
           )}
         </ul>
       </div>
+
+      {/* --- Team --------------------------------------------------------------- */}
+      {canManage ? (
+        <Card className="mt-8 p-5">
+          <h3 className="font-medium">Team</h3>
+          <p className="mt-1 text-xs text-stone-400">
+            Invite coordinators to help run events. Admins manage everything;
+            facilitators run events (check-in, mark paid, log readings) but
+            can&apos;t change org settings.
+          </p>
+
+          <ul className="mt-4 space-y-2">
+            {members.map((m) => (
+              <li
+                key={m.membershipId}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-stone-100 p-3"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-stone-800">
+                    {m.name ?? m.email}
+                    {m.isSelf ? " (you)" : ""}
+                  </p>
+                  {m.name ? (
+                    <p className="truncate text-xs text-stone-400">{m.email}</p>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-2">
+                  {m.status === "INVITED" ? <Badge>Invited</Badge> : null}
+                  {m.role === "OWNER" || m.isSelf ? (
+                    <Badge>{m.role}</Badge>
+                  ) : (
+                    <>
+                      <form
+                        action={setMemberRoleAction}
+                        className="flex items-center gap-1"
+                      >
+                        <input type="hidden" name="membershipId" value={m.membershipId} />
+                        <Select
+                          name="role"
+                          key={m.role}
+                          defaultValue={m.role}
+                          className="py-1.5 text-xs"
+                        >
+                          <option value="FACILITATOR">Facilitator</option>
+                          <option value="ADMIN">Admin</option>
+                        </Select>
+                        <SaveButton
+                          variant="ghost"
+                          className="px-2 py-1 text-xs"
+                          savedLabel="✓"
+                        >
+                          Save
+                        </SaveButton>
+                      </form>
+                      <form action={removeMemberAction}>
+                        <input type="hidden" name="membershipId" value={m.membershipId} />
+                        <ConfirmButton
+                          message={`Remove ${m.name ?? m.email} from the team? They lose access immediately.`}
+                          className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+                        >
+                          Remove
+                        </ConfirmButton>
+                      </form>
+                    </>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <form
+            action={inviteMemberAction}
+            className="mt-4 flex flex-col gap-2 border-t border-stone-100 pt-4 sm:flex-row"
+          >
+            <Input
+              name="email"
+              type="email"
+              required
+              placeholder="teammate@email.com"
+              className="flex-1"
+            />
+            <Select name="role" defaultValue="FACILITATOR" className="sm:w-40">
+              <option value="FACILITATOR">Facilitator</option>
+              <option value="ADMIN">Admin</option>
+            </Select>
+            <SaveButton className="shrink-0" savedLabel="Invited ✓">
+              Invite
+            </SaveButton>
+          </form>
+          <p className="mt-2 text-xs text-stone-400">
+            They get nothing until they sign in with this email and accept from
+            their dashboard — so invites can&apos;t be used to spam anyone.
+          </p>
+        </Card>
+      ) : null}
 
       {/* --- Billing ------------------------------------------------------------ */}
       {canManage ? (

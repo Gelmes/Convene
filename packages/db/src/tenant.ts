@@ -1101,6 +1101,8 @@ export async function getMembershipRole(
     where: { userId_organizationId: { userId, organizationId } },
     select: { role: true, status: true },
   });
-  if (!membership || membership.status === "DISABLED") return null;
+  // Only ACTIVE members have access — INVITED (not yet accepted) and DISABLED
+  // memberships grant nothing, so being invited never exposes org data.
+  if (!membership || membership.status !== "ACTIVE") return null;
   return membership.role;
 }

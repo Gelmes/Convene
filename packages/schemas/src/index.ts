@@ -164,6 +164,13 @@ export const advanceModeSchema = z.enum(["MANUAL", "AUTO"]);
 export const eventVisibilitySchema = z.enum(["CLOSED", "UNLISTED", "LISTED"]);
 export type EventVisibilityInput = z.infer<typeof eventVisibilitySchema>;
 
+/** Invite a teammate: email + a role the inviter is allowed to grant. */
+export const inviteMemberSchema = z.object({
+  email: emailSchema,
+  role: z.enum(["ADMIN", "FACILITATOR"]),
+});
+export type InviteMemberInput = z.infer<typeof inviteMemberSchema>;
+
 export const acceptInviteSchema = z.object({
   email: emailSchema.optional(),
   phone: z.string().max(30).optional(),

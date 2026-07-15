@@ -3,7 +3,7 @@ import { createFormTemplateSchema } from "@convene/schemas";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireMembership } from "@/lib/session";
+import { requireManage } from "@/lib/session";
 import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
 import { Rollout } from "@/components/rollout";
 
@@ -16,7 +16,7 @@ export default async function FormsPage({
 }) {
   const { orgId } = await params;
   const sp = await searchParams;
-  const { userId } = await requireMembership(orgId);
+  const { userId } = await requireManage(orgId);
 
   const db = createTenantClient(orgId, userId);
   const [org, forms] = await Promise.all([
@@ -26,7 +26,7 @@ export default async function FormsPage({
 
   async function createForm(formData: FormData) {
     "use server";
-    const { userId } = await requireMembership(orgId);
+    const { userId } = await requireManage(orgId);
     const parsed = createFormTemplateSchema.safeParse({
       name: formData.get("name"),
     });

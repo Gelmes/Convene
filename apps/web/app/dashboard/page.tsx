@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { auth, signOut } from "@convene/auth";
-import { prisma } from "@convene/db";
+import {
+  acceptOrgInvite,
+  declineOrgInvite,
+  listPendingInvitesForUser,
+  prisma,
+} from "@convene/db";
 import { createOrganizationSchema } from "@convene/schemas";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -14,11 +19,30 @@ export default async function Dashboard() {
   const userId = (session?.user as { id?: string } | undefined)?.id;
   if (!userId) redirect("/sign-in");
 
-  const memberships = await prisma.membership.findMany({
-    where: { userId },
-    include: { organization: true },
-    orderBy: { createdAt: "asc" },
-  });
+  const [memberships, pendingInvites] = await Promise.all([
+    prisma.membership.findMany({
+      where: { userId, status: "ACTIVE" },
+      include: { organization: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    listPendingInvitesForUser(userId),
+  ]);
+
+  async function acceptInvite(formData: FormData) {
+    "use server";
+    const uid = (await auth())?.user as { id?: string } | undefined;
+    if (!uid?.id) redirect("/sign-in");
+    await acceptOrgInvite(uid.id, String(formData.get("orgId")));
+    revalidatePath("/dashboard");
+  }
+
+  async function declineInvite(formData: FormData) {
+    "use server";
+    const uid = (await auth())?.user as { id?: string } | undefined;
+    if (!uid?.id) redirect("/sign-in");
+    await declineOrgInvite(uid.id, String(formData.get("orgId")));
+    revalidatePath("/dashboard");
+  }
 
   async function createOrg(formData: FormData) {
     "use server";
@@ -96,6 +120,39 @@ export default async function Dashboard() {
           </Card>
         </Rollout>
       </div>
+
+      {pendingInvites.length > 0 ? (
+        <div className="mt-6 space-y-2">
+          <h2 className="text-sm font-semibold text-stone-700">
+            Invitations
+          </h2>
+          {pendingInvites.map((inv) => (
+            <Card
+              key={inv.organizationId}
+              className="flex flex-col gap-3 border-emerald-200 bg-emerald-50/50 p-4 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <p className="text-sm text-stone-700">
+                <strong>{inv.organizationName}</strong> invited you to join as{" "}
+                {inv.role.toLowerCase()}.
+              </p>
+              <div className="flex shrink-0 gap-2">
+                <form action={acceptInvite}>
+                  <input type="hidden" name="orgId" value={inv.organizationId} />
+                  <Button variant="accent" className="px-3 py-1.5 text-sm">
+                    Accept
+                  </Button>
+                </form>
+                <form action={declineInvite}>
+                  <input type="hidden" name="orgId" value={inv.organizationId} />
+                  <Button variant="ghost" className="px-3 py-1.5 text-sm">
+                    Decline
+                  </Button>
+                </form>
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : null}
 
       <ul className="mt-6 space-y-3">
         {memberships.length === 0 ? (

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { parseQuestions } from "@/lib/forms";
 import { r2Delete } from "@/lib/r2";
-import { requireMembership } from "@/lib/session";
+import { requireManage } from "@/lib/session";
 import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm";
 import { QuestionBuilder } from "@/components/question-builder";
@@ -31,7 +31,7 @@ export default async function FormBuilder({
   params: Promise<{ orgId: string; formId: string }>;
 }) {
   const { orgId, formId } = await params;
-  const { userId } = await requireMembership(orgId);
+  const { userId } = await requireManage(orgId);
 
   const db = createTenantClient(orgId, userId);
   const form = await db.forms.get(formId);
@@ -41,7 +41,7 @@ export default async function FormBuilder({
 
   async function addQuestion(formData: FormData) {
     "use server";
-    const { userId } = await requireMembership(orgId);
+    const { userId } = await requireManage(orgId);
     const db = createTenantClient(orgId, userId);
     const form = await db.forms.get(formId);
     if (!form) return;
@@ -88,7 +88,7 @@ export default async function FormBuilder({
 
   async function deleteQuestion(formData: FormData) {
     "use server";
-    const { userId } = await requireMembership(orgId);
+    const { userId } = await requireManage(orgId);
     const db = createTenantClient(orgId, userId);
     const form = await db.forms.get(formId);
     if (!form) return;
@@ -106,7 +106,7 @@ export default async function FormBuilder({
 
   async function publish() {
     "use server";
-    const { userId } = await requireMembership(orgId);
+    const { userId } = await requireManage(orgId);
     const db = createTenantClient(orgId, userId);
     await db.forms.publish(formId);
     revalidatePath(`/o/${orgId}/forms/${formId}`);
@@ -114,7 +114,7 @@ export default async function FormBuilder({
 
   async function renameForm(formData: FormData) {
     "use server";
-    const { userId, role } = await requireMembership(orgId);
+    const { userId, role } = await requireManage(orgId);
     if (role !== "OWNER" && role !== "ADMIN") return;
     const parsed = renameSchema.safeParse({ name: formData.get("name") });
     if (!parsed.success) return;
@@ -125,7 +125,7 @@ export default async function FormBuilder({
 
   async function toggleArchive() {
     "use server";
-    const { userId, role } = await requireMembership(orgId);
+    const { userId, role } = await requireManage(orgId);
     if (role !== "OWNER" && role !== "ADMIN") return;
     const db = createTenantClient(orgId, userId);
     const form = await db.forms.get(formId);
@@ -137,7 +137,7 @@ export default async function FormBuilder({
 
   async function deleteForm() {
     "use server";
-    const { userId, role } = await requireMembership(orgId);
+    const { userId, role } = await requireManage(orgId);
     if (role !== "OWNER" && role !== "ADMIN") return;
     const db = createTenantClient(orgId, userId);
     const doomed = await db.forms.get(formId);

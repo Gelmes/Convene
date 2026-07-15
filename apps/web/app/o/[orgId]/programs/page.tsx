@@ -3,7 +3,7 @@ import { createProgramSchema } from "@convene/schemas";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireMembership } from "@/lib/session";
+import { requireManage } from "@/lib/session";
 import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
 import { Rollout } from "@/components/rollout";
 
@@ -16,7 +16,7 @@ export default async function ProgramsPage({
 }) {
   const { orgId } = await params;
   const sp = await searchParams;
-  const { userId } = await requireMembership(orgId);
+  const { userId } = await requireManage(orgId);
 
   const db = createTenantClient(orgId, userId);
   const [org, programs] = await Promise.all([
@@ -26,7 +26,7 @@ export default async function ProgramsPage({
 
   async function createProgram(formData: FormData) {
     "use server";
-    const { userId } = await requireMembership(orgId);
+    const { userId } = await requireManage(orgId);
     const parsed = createProgramSchema.safeParse({ name: formData.get("name") });
     if (!parsed.success) return;
     const db = createTenantClient(orgId, userId);

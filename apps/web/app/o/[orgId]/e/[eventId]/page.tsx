@@ -7,7 +7,7 @@ import {
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireMembership } from "@/lib/session";
+import { requireManage, requireMembership } from "@/lib/session";
 import { formatDateTime, toDateTimeLocalValue, wallClockToUtc } from "@/lib/format";
 import { TimezoneSelect } from "@/components/timezone-select";
 import { r2Configured, r2Delete, r2PresignGet } from "@/lib/r2";
@@ -136,7 +136,7 @@ export default async function EventDetail({
 
   async function setVisibility(formData: FormData) {
     "use server";
-    const { userId } = await requireMembership(orgId);
+    const { userId } = await requireManage(orgId);
     const parsed = eventVisibilitySchema.safeParse(formData.get("visibility"));
     if (!parsed.success) return;
     const db = createTenantClient(orgId, userId);
@@ -146,7 +146,7 @@ export default async function EventDetail({
 
   async function setIntakeForm(formData: FormData) {
     "use server";
-    const { userId } = await requireMembership(orgId);
+    const { userId } = await requireManage(orgId);
     const db = createTenantClient(orgId, userId);
     const formId = String(formData.get("formTemplateId") ?? "");
     await db.events.setIntakeForm(eventId, formId || null);
@@ -155,7 +155,7 @@ export default async function EventDetail({
 
   async function setStage(formData: FormData) {
     "use server";
-    const { userId } = await requireMembership(orgId);
+    const { userId } = await requireManage(orgId);
     const db = createTenantClient(orgId, userId);
     const stageId = String(formData.get("stageId") ?? "");
     await db.events.setStage(eventId, stageId || null);
@@ -164,7 +164,7 @@ export default async function EventDetail({
 
   async function setPayment(formData: FormData) {
     "use server";
-    const { userId } = await requireMembership(orgId);
+    const { userId } = await requireManage(orgId);
     const parsed = paymentSettingsSchema.safeParse({
       price: (formData.get("price") as string) || undefined,
       paymentLink: (formData.get("paymentLink") as string)?.trim() || "",

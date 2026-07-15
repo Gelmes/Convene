@@ -3,7 +3,7 @@ import { advanceModeSchema, createStageSchema, renameSchema } from "@convene/sch
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireMembership } from "@/lib/session";
+import { requireManage } from "@/lib/session";
 import { BackLink, Badge, Button, Card, Input, PageShell, Select } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm";
 import { Rollout } from "@/components/rollout";
@@ -15,7 +15,7 @@ export default async function ProgramDetail({
   params: Promise<{ orgId: string; programId: string }>;
 }) {
   const { orgId, programId } = await params;
-  const { userId } = await requireMembership(orgId);
+  const { userId } = await requireManage(orgId);
 
   const db = createTenantClient(orgId, userId);
   const [program, enrollments, participants, publishedForms] = await Promise.all([
@@ -33,7 +33,7 @@ export default async function ProgramDetail({
   // --- Stage actions --------------------------------------------------------
   async function addStage(formData: FormData) {
     "use server";
-    const { userId } = await requireMembership(orgId);
+    const { userId } = await requireManage(orgId);
     const parsed = createStageSchema.safeParse({ name: formData.get("name") });
     if (!parsed.success) return;
     const db = createTenantClient(orgId, userId);
@@ -43,7 +43,7 @@ export default async function ProgramDetail({
 
   async function removeStage(formData: FormData) {
     "use server";
-    const { userId } = await requireMembership(orgId);
+    const { userId } = await requireManage(orgId);
     const db = createTenantClient(orgId, userId);
     await db.programs.removeStage(String(formData.get("stageId")));
     revalidatePath(path);
@@ -51,7 +51,7 @@ export default async function ProgramDetail({
 
   async function moveStage(formData: FormData) {
     "use server";
-    const { userId } = await requireMembership(orgId);
+    const { userId } = await requireManage(orgId);
     const db = createTenantClient(orgId, userId);
     await db.programs.moveStage(
       String(formData.get("stageId")),
@@ -62,7 +62,7 @@ export default async function ProgramDetail({
 
   async function setStageForm(formData: FormData) {
     "use server";
-    const { userId } = await requireMembership(orgId);
+    const { userId } = await requireManage(orgId);
     const db = createTenantClient(orgId, userId);
     const formId = String(formData.get("formTemplateId") ?? "");
     await db.programs.setStageRequiredForm(
@@ -75,7 +75,7 @@ export default async function ProgramDetail({
   // --- Enrollment actions ----------------------------------------------------
   async function enroll(formData: FormData) {
     "use server";
-    const { userId } = await requireMembership(orgId);
+    const { userId } = await requireManage(orgId);
     const db = createTenantClient(orgId, userId);
     const participantId = String(formData.get("participantId") ?? "");
     if (!participantId) return;
@@ -85,7 +85,7 @@ export default async function ProgramDetail({
 
   async function advance(formData: FormData) {
     "use server";
-    const { userId } = await requireMembership(orgId);
+    const { userId } = await requireManage(orgId);
     const db = createTenantClient(orgId, userId);
     await db.enrollments.advance(String(formData.get("enrollmentId")));
     revalidatePath(path);
@@ -93,7 +93,7 @@ export default async function ProgramDetail({
 
   async function moveTo(formData: FormData) {
     "use server";
-    const { userId } = await requireMembership(orgId);
+    const { userId } = await requireManage(orgId);
     const db = createTenantClient(orgId, userId);
     const stageId = String(formData.get("stageId") ?? "");
     if (!stageId) return;
@@ -103,7 +103,7 @@ export default async function ProgramDetail({
 
   async function setStatus(formData: FormData) {
     "use server";
-    const { userId } = await requireMembership(orgId);
+    const { userId } = await requireManage(orgId);
     const db = createTenantClient(orgId, userId);
     const status = String(formData.get("status")) as
       | "ACTIVE"
@@ -116,7 +116,7 @@ export default async function ProgramDetail({
 
   async function resetEnrollment(formData: FormData) {
     "use server";
-    const { userId } = await requireMembership(orgId);
+    const { userId } = await requireManage(orgId);
     const db = createTenantClient(orgId, userId);
     await db.enrollments.reset(String(formData.get("enrollmentId")));
     revalidatePath(path);
@@ -124,7 +124,7 @@ export default async function ProgramDetail({
 
   async function removeEnrollment(formData: FormData) {
     "use server";
-    const { userId } = await requireMembership(orgId);
+    const { userId } = await requireManage(orgId);
     const db = createTenantClient(orgId, userId);
     await db.enrollments.remove(String(formData.get("enrollmentId")));
     revalidatePath(path);
@@ -132,7 +132,7 @@ export default async function ProgramDetail({
 
   async function setAdvanceMode(formData: FormData) {
     "use server";
-    const { userId } = await requireMembership(orgId);
+    const { userId } = await requireManage(orgId);
     const parsed = advanceModeSchema.safeParse(formData.get("advanceMode"));
     if (!parsed.success) return;
     const db = createTenantClient(orgId, userId);
@@ -142,7 +142,7 @@ export default async function ProgramDetail({
 
   async function renameProgram(formData: FormData) {
     "use server";
-    const { userId, role } = await requireMembership(orgId);
+    const { userId, role } = await requireManage(orgId);
     if (role !== "OWNER" && role !== "ADMIN") return;
     const parsed = renameSchema.safeParse({ name: formData.get("name") });
     if (!parsed.success) return;
@@ -153,7 +153,7 @@ export default async function ProgramDetail({
 
   async function deleteProgram() {
     "use server";
-    const { userId, role } = await requireMembership(orgId);
+    const { userId, role } = await requireManage(orgId);
     if (role !== "OWNER" && role !== "ADMIN") return;
     const db = createTenantClient(orgId, userId);
     await db.programs.delete(programId);
