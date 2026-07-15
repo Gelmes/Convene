@@ -139,6 +139,47 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
   "I have read and agree", acceptance recorded as a form submission (timestamp +
   form version + doc name). Full e-sign (DocuSign etc.) only on real demand.
   Vitalgather records assent; hosts own their legal text.
+- **Team roles / authorized coordinators (per-member permissions):** large orgs
+  want more than one operator — coordinators who get registration links, check
+  people in, mark paid, log readings, and (trusted ones) create events / manage
+  programs. Foundations already exist: `Membership` (role + status), the `Role`
+  enum (OWNER/ADMIN/FACILITATOR/STAFF), `MembershipStatus.INVITED`, and
+  `InviteKind.STAFF` — but only OWNER/ADMIN are enforced today (field capture is
+  open to any member; INVITED is not honored). Plan:
+  - **Roles first, not granular ACLs.** Map the 4 existing roles: OWNER (billing,
+    delete/transfer, members) · ADMIN (create/edit/delete events, programs,
+    forms; invite members) · FACILITATOR (run assigned events: check-in, mark
+    paid, log BP + view health data, copy links; no org config) · STAFF
+    (check-in + mark paid only; no health-data view). Add per-member granular
+    flags only if a real org outgrows the roles. Gate "view health data"
+    explicitly given the privacy posture.
+  - **Membership is opt-in (anti-spam).** Invite by email → `Membership`
+    (status INVITED) + `Invite` (kind STAFF, token) → invitee accepts via magic
+    link → status ACTIVE. Only OWNER/ADMIN invite. Must fix: honor INVITED
+    (`getMembershipRole` currently returns a role for non-DISABLED; dashboard
+    lists all statuses) — no access until accepted; show as a pending tray.
+  - **Dashboard discovery falls out for free:** members already see their orgs on
+    /dashboard, events one click away — just filter to ACTIVE memberships + add a
+    pending-invites tray. No /discover search needed for one's own managed events.
+  - **Later (large orgs):** per-event assignment (scope a coordinator to specific
+    events, not the whole org) via an `EventAssignment` join.
+- **Anti-spam membership model — opt-in invites, NOT a friend graph** (open
+  question resolved 2026-07-14): no friends/mutual-consent needed before managing
+  events together. The Telegram-style spam vector (added to junk groups you never
+  agreed to) only exists if being added is *involuntary* — invite-and-accept
+  kills it: nobody is an active member without clicking accept, so nothing hits
+  their dashboard until they opt in; a pending invite sits in a tray they ignore
+  or decline at zero cost. Layer on: only OWNER/ADMIN send invites, invites are
+  by known email, rate-limit pending invites for new/unverified orgs, members can
+  leave + block an org. This is the Slack/GitHub/Notion workspace model — right
+  for org→member; a social friend graph is the wrong shape and adds friction.
+- **Bookmarks / favorites (save · follow · like):** let signed-in users save
+  events, follow organizations, and like/favorite programs. Model as one
+  polymorphic `Favorite` (userId, targetType EVENT|ORG|PROGRAM, targetId,
+  createdAt; unique per user+target). Feeds the discovery hub — a "Saved" row,
+  "follow an org → see its new listed events," and a soft popularity/ranking
+  signal alongside registration count. Participant/public-facing (distinct from
+  the host-side team roles above).
 - **Photo/media storage limits:** R2 storage is the one usage that costs real
   money over time (R2 bills ~$0.015/GB-month *stored*, near-zero egress — so
   volume sitting in the bucket is the cost lever, not bandwidth). Today photo
