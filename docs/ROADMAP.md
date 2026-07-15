@@ -127,7 +127,7 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
   and hosts opt in to list. This is where **featured / popular / trending**
   showcases live (homepage rows). Prereqs: event image/thumbnail (above),
   categories/tags, geo location fields (not free-text), org public profiles,
-  SEO-friendly listing pages, an "list publicly" opt-in per event, and a
+  SEO-friendly listing pages, an event **visibility** state (expand today's `publicRegistration` bool → Closed / Unlisted-link-only / Listed-in-dashboard), and a
   ranking signal for popular/trending (registrations, recency, views).
   Sequence AFTER billing (✅) + public API + site generator (those feed it
   hosts — a directory is only as good as its supply). Layers on the existing
@@ -152,9 +152,9 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
       default; board as an alternate view.
 - [ ] **Per-photo visibility toggle** — the enum exists
       (PUBLIC/PARTICIPANTS/PRIVATE, default PARTICIPANTS), just no UI to change it.
-- [ ] **Event image / thumbnail** — host uploads a cover image per event (R2,
-      reuse photo infra + sharp thumbnail). Shows on the public registration
-      page and is a prerequisite for the discovery hub's event cards.
+- [x] **Event image / thumbnail** — done 2026-07-08. Cover (1280w webp) +
+      card thumb (600x400) in R2 via sharp; Settings → Cover image uploader;
+      shown on public /r page + org event cards. Discovery-hub cards ready.
 - [ ] **"Agreement" question type** — contracts-lite waiver checkbox; build when
       the first host asks (see Future considerations → Program contracts).
 - [x] **Timezone handling** — done 2026-07-08. Events anchored to a venue IANA
