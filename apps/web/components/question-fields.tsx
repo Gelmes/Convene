@@ -1,6 +1,7 @@
 import type { FormQuestion } from "@convene/schemas";
 import { Input, Select, Textarea } from "@/components/ui";
 import { AgreementField } from "@/components/agreement-field";
+import { CheckboxGroup } from "@/components/checkbox-group";
 
 type RenderableQuestion = FormQuestion & { documentUrl?: string };
 
@@ -28,7 +29,6 @@ export function QuestionFields({
 
         // Choice groups (radio / checkboxes) get their own block, not a <label>.
         if (q.type === "radio" || q.type === "checkboxes") {
-          const inputType = q.type === "radio" ? "radio" : "checkbox";
           return (
             <fieldset key={q.id} className="block">
               <legend className="text-sm font-medium text-stone-700">
@@ -40,23 +40,31 @@ export function QuestionFields({
                   </span>
                 ) : null}
               </legend>
-              <div className="mt-1.5 space-y-1.5">
-                {(q.options ?? []).map((opt) => (
-                  <label
-                    key={opt}
-                    className="flex items-center gap-2 text-sm font-normal text-stone-600"
-                  >
-                    <input
-                      type={inputType}
-                      name={`q_${q.id}`}
-                      value={opt}
-                      required={q.type === "radio" && q.required}
-                      className="h-4 w-4 border-stone-300 accent-emerald-600"
-                    />
-                    {opt}
-                  </label>
-                ))}
-              </div>
+              {q.type === "checkboxes" ? (
+                <CheckboxGroup
+                  id={q.id}
+                  options={q.options ?? []}
+                  required={Boolean(q.required)}
+                />
+              ) : (
+                <div className="mt-1.5 space-y-1.5">
+                  {(q.options ?? []).map((opt) => (
+                    <label
+                      key={opt}
+                      className="flex items-center gap-2 text-sm font-normal text-stone-600"
+                    >
+                      <input
+                        type="radio"
+                        name={`q_${q.id}`}
+                        value={opt}
+                        required={q.required}
+                        className="h-4 w-4 border-stone-300 accent-emerald-600"
+                      />
+                      {opt}
+                    </label>
+                  ))}
+                </div>
+              )}
             </fieldset>
           );
         }
