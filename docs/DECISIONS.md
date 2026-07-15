@@ -17,7 +17,7 @@ Choices locked during the architecture Q&A (2026-07-02). Each is a seam we've co
 | 11 | **Hosting** | Railway (web + Postgres + cron) | User's stated preference. |
 
 ## Open questions (not blocking architecture)
-- **Name.** "Convene" is a placeholder. Decide the real product/ecosystem name before public assets.
+- **Name.** ✅ Resolved 2026-07-06 → **Vitalgather** (live at vitalgather.com). Internal identifiers (`@convene/*` scope, repo folder, Dexie DB) still say "convene" — cosmetic tech debt, see ROADMAP.
 - **BP device input.** Manual entry assumed. If Bluetooth cuffs matter later → Capacitor wrap.
 - **Program tracker UX.** Model is flexible (Program→Stages); the *interface* for defining pipelines is still fuzzy — design it when we reach Phase 5.
 - **Domain reselling partner.** HostGator is a page-host, not a registrar reseller. Real options later: Namecheap / OpenSRS / Enom reseller programs. Far-future.

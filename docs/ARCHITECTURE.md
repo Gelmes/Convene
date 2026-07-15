@@ -79,7 +79,7 @@ convene/
 └─ turbo.json / pnpm-workspace.yaml
 ```
 
-The **Site Generator** is a *separate repo*; it consumes Convene's public API (embed intake form, deep-link event registration). Domain reselling (much later) goes through a registrar reseller API (e.g. Namecheap / OpenSRS / Enom) — not a page-host like HostGator.
+The **Site Generator** is a *separate repo*; it consumes Vitalgather's public API (embed intake form, deep-link event registration). Domain reselling (much later) goes through a registrar reseller API (e.g. Namecheap / OpenSRS / Enom) — not a page-host like HostGator.
 
 ## Deployment (Railway)
 
