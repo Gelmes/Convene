@@ -17,6 +17,8 @@
     "@convene/schemas": "workspace:*",
     "archiver": "^8.0.0",
     "aws4fetch": "^1.0.20",
+    "date-fns": "^4.4.0",
+    "date-fns-tz": "^3.2.0",
     "dexie": "^4.0.10",
     "dexie-react-hooks": "^1.1.7",
     "next": "^15.1.3",

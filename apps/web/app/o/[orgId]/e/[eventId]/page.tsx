@@ -4,7 +4,8 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireMembership } from "@/lib/session";
-import { formatDateTime, toDateTimeLocalValue } from "@/lib/format";
+import { formatDateTime, toDateTimeLocalValue, wallClockToUtc } from "@/lib/format";
+import { TimezoneSelect } from "@/components/timezone-select";
 import { r2Configured, r2Delete, r2PresignGet } from "@/lib/r2";
 import {
   BackLink,
@@ -162,10 +163,17 @@ export default async function EventDetail({
       description: (formData.get("description") as string)?.trim() || undefined,
       location: (formData.get("location") as string)?.trim() || undefined,
       startsAt: formData.get("startsAt"),
+      timezone: formData.get("timezone"),
     });
     if (!parsed.success) return;
     const db = createTenantClient(orgId, userId);
-    await db.events.update(eventId, parsed.data);
+    await db.events.update(eventId, {
+      title: parsed.data.title,
+      description: parsed.data.description,
+      location: parsed.data.location,
+      startsAt: wallClockToUtc(parsed.data.startsAt, parsed.data.timezone),
+      timezone: parsed.data.timezone,
+    });
     revalidatePath(`/o/${orgId}/e/${eventId}`);
   }
 
@@ -186,7 +194,7 @@ export default async function EventDetail({
       <BackLink href={`/o/${orgId}`}>Events</BackLink>
       <h1 className="mt-3 text-2xl font-bold tracking-tight">{event.title}</h1>
       <p className="mt-1 text-sm text-stone-500">
-        {formatDateTime(event.startsAt)}
+        {formatDateTime(event.startsAt, event.timezone)}
         {event.location ? ` · ${event.location}` : ""}
       </p>
 
@@ -460,12 +468,23 @@ export default async function EventDetail({
                 name="startsAt"
                 type="datetime-local"
                 key={event.startsAt.toISOString()}
-                defaultValue={toDateTimeLocalValue(event.startsAt)}
+                defaultValue={toDateTimeLocalValue(event.startsAt, event.timezone)}
                 required
                 className="mt-1"
               />
             </label>
           </div>
+          <label className="block text-xs font-medium text-stone-500">
+            Timezone{" "}
+            <span className="font-normal text-stone-400">
+              (the event happens in this zone)
+            </span>
+            <TimezoneSelect
+              name="timezone"
+              key={event.timezone}
+              defaultValue={event.timezone}
+            />
+          </label>
           <SaveButton className="w-full">Save changes</SaveButton>
         </form>
         <form action={deleteEvent} className="mt-3 border-t border-stone-100 pt-3">

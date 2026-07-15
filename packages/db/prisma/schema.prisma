@@ -148,6 +148,7 @@ model Event {
   startsAt             DateTime
   endsAt               DateTime?
   status               EventStatus @default(UPCOMING)
+  timezone             String      @default("UTC") // IANA zone the event happens in; startsAt is a UTC instant
   publicRegistration   Boolean     @default(false)
   intakeFormTemplateId String?
   stageId              String? // attending this event satisfies that stage's event requirement

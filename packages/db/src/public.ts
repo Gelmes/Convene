@@ -7,7 +7,7 @@ export interface PublicInvite {
   state: "active" | "accepted" | "expired";
   participant: { id: string; firstName: string; email: string | null; phone: string | null };
   organizationName: string;
-  event: { id: string; title: string; startsAt: Date; location: string | null } | null;
+  event: { id: string; title: string; startsAt: Date; timezone: string; location: string | null } | null;
   questions: PublicQuestion[];
 }
 
@@ -36,6 +36,7 @@ export async function getPublicEvent(eventId: string) {
       description: true,
       location: true,
       startsAt: true,
+      timezone: true,
       priceCents: true,
       paymentLink: true,
       paymentInstructions: true,
@@ -73,6 +74,7 @@ export async function getInviteByToken(token: string): Promise<PublicInvite | nu
           id: true,
           title: true,
           startsAt: true,
+          timezone: true,
           location: true,
           intakeForm: { select: { id: true, status: true, version: true, questions: true } },
         },
@@ -101,6 +103,7 @@ export async function getInviteByToken(token: string): Promise<PublicInvite | nu
           id: invite.event.id,
           title: invite.event.title,
           startsAt: invite.event.startsAt,
+          timezone: invite.event.timezone,
           location: invite.event.location,
         }
       : null,

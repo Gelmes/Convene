@@ -4,6 +4,7 @@ import { formAnswersSchema } from "@convene/schemas";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { formatDateTime } from "@/lib/format";
+import { LocalTime } from "@/components/local-time";
 import { r2Configured, r2PresignGet } from "@/lib/r2";
 import { Badge, Brand, Card, LinkButton, PageShell } from "@/components/ui";
 
@@ -92,7 +93,7 @@ export default async function Portal() {
                             {reg.event.title}
                           </span>
                           <span className="text-sm text-stone-500">
-                            {formatDateTime(reg.event.startsAt)}
+                            {formatDateTime(reg.event.startsAt, reg.event.timezone)}
                             {reg.event.location ? ` · ${reg.event.location}` : ""}
                           </span>
                         </span>
@@ -194,7 +195,7 @@ export default async function Portal() {
                         {r.note ?? ""}
                       </span>
                       <span className="shrink-0 text-xs text-stone-400">
-                        {formatDateTime(r.takenAt)}
+                        <LocalTime iso={r.takenAt.toISOString()} />
                       </span>
                     </li>
                   ))}
@@ -217,7 +218,7 @@ export default async function Portal() {
                               {s.formTemplate.name}
                             </span>
                             <span className="text-xs text-stone-400">
-                              {formatDateTime(s.createdAt)}
+                              <LocalTime iso={s.createdAt.toISOString()} />
                             </span>
                           </summary>
                           <dl className="space-y-2 border-t border-stone-100 p-3">

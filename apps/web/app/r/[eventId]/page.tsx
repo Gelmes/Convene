@@ -66,7 +66,7 @@ export default async function PublicRegistration({
           </div>
           <h1 className="mt-4 text-xl font-semibold">You&apos;re registered!</h1>
           <p className="mt-2 text-sm text-stone-500">
-            See you at {event.title} — {formatDateTime(event.startsAt)}
+            See you at {event.title} — {formatDateTime(event.startsAt, event.timezone)}
             {event.location ? `, ${event.location}` : ""}. If you provided an
             email, you can sign in with it anytime to see your data.
           </p>
@@ -143,7 +143,7 @@ export default async function PublicRegistration({
         </p>
         <h1 className="mt-1 text-xl font-semibold tracking-tight">{event.title}</h1>
         <p className="mt-1 text-sm text-stone-500">
-          {formatDateTime(event.startsAt)}
+          {formatDateTime(event.startsAt, event.timezone)}
           {event.location ? ` · ${event.location}` : ""}
           {event.priceCents ? (
             <span className="ml-2 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/10">

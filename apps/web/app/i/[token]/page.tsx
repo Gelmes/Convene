@@ -121,6 +121,7 @@ export default async function InviteClaim({
           {invite.event
             ? `You're registered for ${invite.event.title} — ${formatDateTime(
                 invite.event.startsAt,
+                invite.event.timezone,
               )}${invite.event.location ? `, ${invite.event.location}` : ""}.`
             : "Your host asked you to confirm your details."}{" "}
           Please confirm your contact info

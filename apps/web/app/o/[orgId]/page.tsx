@@ -3,6 +3,8 @@ import { createEventSchema, renameSchema } from "@convene/schemas";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { TimezoneSelect } from "@/components/timezone-select";
+import { LocalTime } from "@/components/local-time";
 import {
   billingConfigured,
   createCheckoutUrl,
@@ -11,7 +13,7 @@ import {
   type BillingInterval,
 } from "@/lib/billing";
 import { requireMembership } from "@/lib/session";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, wallClockToUtc } from "@/lib/format";
 import { BackLink, Badge, Button, Card, Input, PageShell } from "@/components/ui";
 import { TypedDeleteConfirm } from "@/components/confirm";
 import { Rollout } from "@/components/rollout";
@@ -55,11 +57,17 @@ export default async function OrgHome({
       title: formData.get("title"),
       location: formData.get("location") || undefined,
       startsAt: formData.get("startsAt"),
+      timezone: formData.get("timezone"),
     });
     if (!parsed.success) return;
     const db = createTenantClient(orgId, userId);
     try {
-      await db.events.create(parsed.data);
+      await db.events.create({
+        title: parsed.data.title,
+        location: parsed.data.location,
+        startsAt: wallClockToUtc(parsed.data.startsAt, parsed.data.timezone),
+        timezone: parsed.data.timezone,
+      });
     } catch (err) {
       if (err instanceof LimitError) redirect(`/o/${orgId}?limit=events`);
       throw err;
@@ -216,15 +224,21 @@ export default async function OrgHome({
             <form action={createEvent} className="space-y-3">
               <Input name="title" required placeholder="Event title" />
               <Input name="location" placeholder="Location (optional)" />
-              <label className="block text-sm text-stone-600">
-                Starts at
-                <Input
-                  name="startsAt"
-                  type="datetime-local"
-                  required
-                  className="mt-1"
-                />
-              </label>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <label className="block flex-1 text-sm text-stone-600">
+                  Starts at
+                  <Input
+                    name="startsAt"
+                    type="datetime-local"
+                    required
+                    className="mt-1"
+                  />
+                </label>
+                <label className="block flex-1 text-sm text-stone-600">
+                  Timezone
+                  <TimezoneSelect name="timezone" />
+                </label>
+              </div>
               <Button className="w-full">Create event</Button>
             </form>
           </Card>
@@ -247,7 +261,7 @@ export default async function OrgHome({
                         {e.title}
                       </span>
                       <span className="mt-0.5 block text-sm text-stone-500">
-                        {formatDateTime(e.startsAt)}
+                        {formatDateTime(e.startsAt, e.timezone)}
                         {e.location ? ` · ${e.location}` : ""}
                       </span>
                     </span>
@@ -327,7 +341,7 @@ export default async function OrgHome({
               </Button>
               {org?.subscription?.currentPeriodEnd ? (
                 <p className="mt-2 text-center text-xs text-stone-400">
-                  Renews {formatDateTime(org.subscription.currentPeriodEnd)}
+                  Renews <LocalTime iso={org.subscription.currentPeriodEnd.toISOString()} />
                 </p>
               ) : null}
             </form>

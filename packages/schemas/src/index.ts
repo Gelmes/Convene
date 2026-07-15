@@ -32,6 +32,25 @@ export const createHealthReadingSchema = z.object({
 });
 export type CreateHealthReadingInput = z.infer<typeof createHealthReadingSchema>;
 
+// --- Timezones (events are anchored to a venue zone) --------------------------
+
+/** True for a real IANA timezone (e.g. "America/Denver"). */
+export function isValidTimeZone(tz: string): boolean {
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const timezoneSchema = z.string().refine(isValidTimeZone, "Invalid timezone");
+// Wall-clock value from a datetime-local input (yyyy-MM-ddThh:mm), interpreted
+// in the event's timezone by the caller.
+const wallClockSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/, "Invalid date/time");
+
 // --- Custom intake forms (Phase 2) --------------------------------------------
 
 export const formQuestionTypeSchema = z.enum([
@@ -117,7 +136,8 @@ export const updateEventSchema = z.object({
   title: z.string().min(2, "Title is too short").max(140),
   description: z.string().max(2000).optional(),
   location: z.string().max(200).optional(),
-  startsAt: z.coerce.date(),
+  startsAt: wallClockSchema,
+  timezone: timezoneSchema,
 });
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;
 
@@ -201,9 +221,8 @@ export type SyncBatch = z.infer<typeof syncBatchSchema>;
 
 export const createEventSchema = z.object({
   title: z.string().min(2, "Title is too short").max(140),
-  description: z.string().max(2000).optional(),
   location: z.string().max(200).optional(),
-  startsAt: z.coerce.date(),
-  endsAt: z.coerce.date().optional(),
+  startsAt: wallClockSchema,
+  timezone: timezoneSchema,
 });
 export type CreateEventInput = z.infer<typeof createEventSchema>;

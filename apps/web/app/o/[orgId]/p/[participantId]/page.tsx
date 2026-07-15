@@ -7,6 +7,7 @@ import { buildAnswers, parseQuestions } from "@/lib/forms";
 import { sendInviteEmail } from "@/lib/mailer";
 import { requireMembership } from "@/lib/session";
 import { formatDateTime } from "@/lib/format";
+import { LocalTime } from "@/components/local-time";
 import { BackLink, Badge, Button, Card, PageShell } from "@/components/ui";
 import { CopyField } from "@/components/copy-field";
 import { QuestionFields } from "@/components/question-fields";
@@ -180,7 +181,7 @@ export default async function ParticipantDetail({
                   {r.note ?? ""}
                 </span>
                 <span className="shrink-0 text-xs text-stone-400">
-                  {formatDateTime(r.takenAt)}
+                  <LocalTime iso={r.takenAt.toISOString()} />
                 </span>
               </Card>
             </li>
@@ -213,7 +214,7 @@ export default async function ParticipantDetail({
                     <span className="flex items-center gap-2">
                       <Badge>{s.filledBy === "HOST" ? "Filled by host" : "Self-filled"}</Badge>
                       <span className="text-xs text-stone-400">
-                        {formatDateTime(s.createdAt)}
+                        <LocalTime iso={s.createdAt.toISOString()} />
                       </span>
                     </span>
                   </div>

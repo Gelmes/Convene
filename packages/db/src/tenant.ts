@@ -197,6 +197,7 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
           description?: string | null;
           location?: string | null;
           startsAt: Date;
+          timezone: string;
         },
       ) {
         return prisma.event.updateMany({
@@ -206,6 +207,7 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
             description: data.description ?? null,
             location: data.location ?? null,
             startsAt: data.startsAt,
+            timezone: data.timezone,
           },
         });
       },
@@ -260,7 +262,7 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
         description?: string;
         location?: string;
         startsAt: Date;
-        endsAt?: Date;
+        timezone: string;
       }) {
         await assertWithinLimit(organizationId, "events");
         return prisma.event.create({
@@ -270,7 +272,7 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
             description: data.description ?? null,
             location: data.location ?? null,
             startsAt: data.startsAt,
-            endsAt: data.endsAt ?? null,
+            timezone: data.timezone,
           },
         });
       },

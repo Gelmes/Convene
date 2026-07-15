@@ -32,6 +32,7 @@ export async function getPortalData(userId: string, email?: string | null) {
               id: true,
               title: true,
               startsAt: true,
+              timezone: true,
               location: true,
               priceCents: true,
               paymentLink: true,
