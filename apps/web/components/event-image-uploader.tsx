@@ -20,28 +20,54 @@ export function EventImageUploader({
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [pct, setPct] = useState(0);
+  const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
   const endpoint = `/api/o/${orgId}/e/${eventId}/image`;
 
-  async function upload(file: File | undefined) {
+  function upload(file: File | undefined) {
     if (!file) return;
     setBusy(true);
     setError("");
-    try {
-      const body = new FormData();
-      body.append("file", file);
-      const res = await fetch(endpoint, { method: "POST", body });
-      if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(data?.error ?? `upload failed (${res.status})`);
+    setPct(0);
+    setProcessing(false);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", endpoint);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const p = Math.round((e.loaded / e.total) * 100);
+        setPct(p);
+        // Bytes are up; the server is now resizing into cover + thumbnail.
+        if (p >= 100) setProcessing(true);
       }
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "upload failed");
-    } finally {
+    };
+    xhr.onload = () => {
       setBusy(false);
+      setProcessing(false);
       if (inputRef.current) inputRef.current.value = "";
-    }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        router.refresh();
+      } else {
+        let message = `upload failed (${xhr.status})`;
+        try {
+          const data = JSON.parse(xhr.responseText) as { error?: string };
+          if (data.error) message = data.error;
+        } catch {
+          /* keep generic */
+        }
+        setError(message);
+      }
+    };
+    xhr.onerror = () => {
+      setBusy(false);
+      setProcessing(false);
+      setError("network error — check your connection");
+    };
+
+    const body = new FormData();
+    body.append("file", file);
+    xhr.send(body);
   }
 
   async function remove() {
@@ -80,7 +106,7 @@ export function EventImageUploader({
               onClick={() => inputRef.current?.click()}
               className="flex-1 border border-stone-200"
             >
-              {busy ? "Working…" : "Replace"}
+              Replace
             </Button>
             <Button
               type="button"
@@ -101,9 +127,26 @@ export function EventImageUploader({
           onClick={() => inputRef.current?.click()}
           className="aspect-[16/9] w-full flex-col border-2 border-dashed border-stone-300 bg-stone-50/50 text-stone-500 hover:border-emerald-400 hover:text-emerald-700"
         >
-          {busy ? "Uploading…" : "🖼️ Add a cover image"}
+          🖼️ Add a cover image
         </Button>
       )}
+
+      {busy ? (
+        <div className="mt-2">
+          <div className="flex items-center justify-between text-xs text-stone-500">
+            <span>{processing ? "Processing…" : "Uploading…"}</span>
+            <span className="tabular-nums">{processing ? "" : `${pct}%`}</span>
+          </div>
+          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-stone-100">
+            <div
+              className={`h-full rounded-full bg-emerald-500 transition-[width] duration-200 ease-out ${
+                processing ? "animate-pulse" : ""
+              }`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+      ) : null}
       {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
     </div>
   );
