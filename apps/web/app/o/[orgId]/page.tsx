@@ -8,7 +8,12 @@ import {
   removeMember,
   setMemberRole,
 } from "@convene/db";
-import { createEventSchema, inviteMemberSchema, renameSchema } from "@convene/schemas";
+import {
+  createEventSchema,
+  createSessionSchema,
+  inviteMemberSchema,
+  renameSchema,
+} from "@convene/schemas";
 import { sendMemberInviteEmail } from "@/lib/mailer";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
@@ -97,6 +102,32 @@ export default async function OrgHome({
       throw err;
     }
     revalidatePath(`/o/${orgId}`);
+  }
+
+  async function createSession(formData: FormData) {
+    "use server";
+    const { userId } = await requireManage(orgId);
+    const parsed = createSessionSchema.safeParse({
+      firstName: formData.get("firstName"),
+      lastName: (formData.get("lastName") as string) || undefined,
+      startsAt: formData.get("startsAt"),
+      timezone: formData.get("timezone"),
+    });
+    if (!parsed.success) return;
+    const db = createTenantClient(orgId, userId);
+    let event;
+    try {
+      event = await db.events.createSession({
+        firstName: parsed.data.firstName,
+        lastName: parsed.data.lastName,
+        startsAt: wallClockToUtc(parsed.data.startsAt, parsed.data.timezone),
+        timezone: parsed.data.timezone,
+      });
+    } catch (err) {
+      if (err instanceof LimitError) redirect(`/o/${orgId}?limit=events`);
+      throw err;
+    }
+    redirect(`/o/${orgId}/e/${event.id}`);
   }
 
   async function inviteMemberAction(formData: FormData) {
@@ -283,6 +314,7 @@ export default async function OrgHome({
 
       <div className="mt-8">
         {canManage ? (
+        <>
         <Rollout
           heading={<h2 className="text-lg font-semibold">Events</h2>}
           label="+ Add event"
@@ -313,6 +345,44 @@ export default async function OrgHome({
             </form>
           </Card>
         </Rollout>
+        <Rollout
+          heading={
+            <span className="text-sm font-medium text-stone-500">
+              Private 1-on-1?
+            </span>
+          }
+          label="+ New 1:1 session"
+        >
+          <Card className="p-4">
+            <form action={createSession} className="space-y-3">
+              <div className="flex gap-2">
+                <Input name="firstName" required placeholder="Client first name" />
+                <Input name="lastName" placeholder="Last name (optional)" />
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <label className="block flex-1 text-sm text-stone-600">
+                  When
+                  <Input
+                    name="startsAt"
+                    type="datetime-local"
+                    required
+                    className="mt-1"
+                  />
+                </label>
+                <label className="block flex-1 text-sm text-stone-600">
+                  Timezone
+                  <TimezoneSelect name="timezone" />
+                </label>
+              </div>
+              <Button className="w-full">Create session</Button>
+            </form>
+            <p className="mt-2 text-xs text-stone-400">
+              Creates a private session with this client and drops you into it to
+              capture their reading. Not shown publicly.
+            </p>
+          </Card>
+        </Rollout>
+        </>
         ) : (
           <h2 className="text-lg font-semibold">Events</h2>
         )}
@@ -348,8 +418,11 @@ export default async function OrgHome({
                     </span>
                     <span className="ml-3 flex shrink-0 items-center gap-3">
                       <Badge>
-                        {e._count.registrations}{" "}
-                        {e._count.registrations === 1 ? "person" : "people"}
+                        {e.kind === "ONE_ON_ONE"
+                          ? "1:1"
+                          : `${e._count.registrations} ${
+                              e._count.registrations === 1 ? "person" : "people"
+                            }`}
                       </Badge>
                       <span
                         aria-hidden

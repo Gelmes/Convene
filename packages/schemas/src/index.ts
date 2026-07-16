@@ -237,3 +237,12 @@ export const createEventSchema = z.object({
   timezone: timezoneSchema,
 });
 export type CreateEventInput = z.infer<typeof createEventSchema>;
+
+/** Fast create for a private 1-on-1 session: the client + when. */
+export const createSessionSchema = z.object({
+  firstName: z.string().min(1, "Client first name is required").max(80),
+  lastName: z.string().max(80).optional(),
+  startsAt: wallClockSchema,
+  timezone: timezoneSchema,
+});
+export type CreateSessionInput = z.infer<typeof createSessionSchema>;

@@ -148,6 +148,7 @@ model Event {
   startsAt             DateTime
   endsAt               DateTime?
   status               EventStatus @default(UPCOMING)
+  kind                 EventKind   @default(GROUP) // GROUP happening vs ONE_ON_ONE session
   timezone             String      @default("UTC") // IANA zone the event happens in; startsAt is a UTC instant
   // Discoverability: CLOSED (no public page) / UNLISTED (link-only /r page) /
   // LISTED (also surfaced in the public /discover directory). Replaces the old
@@ -418,6 +419,11 @@ enum EventVisibility {
   CLOSED // no public registration page
   UNLISTED // registerable via the shared /r link, but not in the directory
   LISTED // registerable AND shown in the public /discover directory
+}
+
+enum EventKind {
+  GROUP // a group happening with a roster of attendees
+  ONE_ON_ONE // a private session with a single client
 }
 
 enum RegistrationStatus {

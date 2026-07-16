@@ -307,6 +307,59 @@ export function createTenantClient(organizationId: string, actorUserId?: string 
           },
         });
       },
+      /**
+       * Create a private ONE_ON_ONE session in one step: a closed (non-public)
+       * event plus the single client (participant + registration). Both the event
+       * and the participant count toward plan limits. Returns the new event.
+       */
+      async createSession(data: {
+        firstName: string;
+        lastName?: string;
+        startsAt: Date;
+        timezone: string;
+      }) {
+        await assertWithinLimit(organizationId, "events");
+        await assertWithinLimit(organizationId, "participants");
+        const name = [data.firstName, data.lastName].filter(Boolean).join(" ");
+        return prisma.$transaction(async (tx) => {
+          const event = await tx.event.create({
+            data: {
+              organizationId,
+              title: `1:1 · ${name}`,
+              kind: "ONE_ON_ONE",
+              visibility: "CLOSED",
+              startsAt: data.startsAt,
+              timezone: data.timezone,
+            },
+          });
+          const participant = await tx.participant.create({
+            data: {
+              organizationId,
+              firstName: data.firstName,
+              lastName: data.lastName ?? null,
+            },
+          });
+          await tx.eventRegistration.create({
+            data: {
+              organizationId,
+              eventId: event.id,
+              participantId: participant.id,
+              source: "HOST_ADDED",
+            },
+          });
+          await tx.auditLog.create({
+            data: {
+              organizationId,
+              actorUserId: actorUserId ?? null,
+              action: "session.create",
+              entityType: "Event",
+              entityId: event.id,
+              metadata: { participantId: participant.id },
+            },
+          });
+          return event;
+        });
+      },
     },
 
     // --- Registrations (roster) --------------------------------------------
