@@ -180,6 +180,48 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
   "follow an org → see its new listed events," and a soft popularity/ranking
   signal alongside registration count. Participant/public-facing (distinct from
   the host-side team roles above).
+- **1-on-1 / individual sessions (ad-hoc-scheduled):** support private one-on-one
+  sessions (a facilitator + a single client) alongside group events. Direction
+  (brainstormed 2026-07-16):
+  - **Reuse Event per session; don't build a "container" event.** Each session is
+    its own record, reusing BP capture, intake, payment, and program stages with
+    zero new plumbing. Rejected: one standing event that piles up participants —
+    it abuses `Event.startsAt` (a single instant), can't hold per-client session
+    times, and the day-of roster UI buckles under an accumulating list. For a
+    purely *rolling* relationship with known clients, no event is needed at all —
+    the Participant record is already a per-person timeline (readings w/ takenAt,
+    submissions, program progress); a "session" can be a dated entry on the person.
+  - **Add `Event.kind` (GROUP / ONE_ON_ONE)** — one cheap enum unlocks filtering/
+    collapsing 1-on-1s in the events list, a streamlined single-person capture
+    screen, and 1-on-1 defaults (unlisted, no public page). Turns the "clutter"
+    and "creation friction" objections into UI problems, not model problems.
+  - **Client flow = register-first, schedule-second (a "request" model, NOT a
+    booking calendar).** The public/linkable surface is really an **offering** (a
+    bookable 1-on-1 *type*: title, intake, price, description — no fixed time).
+    Client registers + fills intake → that registration spawns a **session** for
+    them (time TBD) → facilitator is notified, arranges + sets the date → client
+    is notified of confirmation → app becomes the session log. So the host view of
+    an offering is a **pipeline of sessions by status**, not a flat roster. This
+    reconciles the earlier A-vs-B tension: the offering is the reusable container,
+    but it holds discrete sessions, not a participant pile. Private = share the
+    offering's unlisted `/r` link or a per-client invite link (existing); public =
+    offering shows in the directory; embedded = offering link on the host's own
+    site (ties to Site Generator / public API).
+  - **New capabilities this implies (net-new today):** (1) a **session status
+    lifecycle** — Requested (no time yet) → Scheduled → Completed → Cancelled/
+    No-show — the backbone, since registration and scheduling are decoupled in
+    time; (2) **notifications** — facilitator notified on a new request, client
+    notified on confirmation. The app notifies hosts of *nothing* today; this is
+    broadly useful (group hosts want "N new registrations" emails too), so build
+    it generally. Two-sided confirmation (client gets "you're confirmed for X") is
+    what makes it feel like a booking product, not just a form.
+  - **Watch:** an offering has no single date, so the discovery card needs a
+    variant (no `startsAt` sort, no "N going" chip — reads "Book a 1:1 →"). And
+    1-on-1s burn the participant plan-limit fast → a pricing signal (heavy 1-on-1
+    practitioners → Pro). "Scheduled ad-hoc" is one step from a real booking/
+    calendar product (availability, slots, self-scheduling, reminders) — the
+    `Event.kind` approach doesn't box that out; build booking only if 1-on-1s
+    become central.
 - **Photo/media storage limits:** R2 storage is the one usage that costs real
   money over time (R2 bills ~$0.015/GB-month *stored*, near-zero egress — so
   volume sitting in the bucket is the cost lever, not bandwidth). Today photo
