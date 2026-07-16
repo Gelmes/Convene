@@ -222,6 +222,25 @@ You chose to build everything, in phases. Each phase is shippable and demoable o
     calendar product (availability, slots, self-scheduling, reminders) — the
     `Event.kind` approach doesn't box that out; build booking only if 1-on-1s
     become central.
+- **Calendar integration (Google first, provider-agnostic):** sync scheduled
+  events + 1-on-1 sessions to calendars. Direction:
+  - **`.ics` first, OAuth later.** An "add to calendar" `.ics` link/attachment
+    works with every calendar (Google/Apple/Outlook) with **zero OAuth**, and
+    rides along in the confirmation email from the 1-on-1 notifications work —
+    ship this as the copy-paste-first baseline before any deep integration.
+  - **Google two-way sync (the upgrade):** push — create/update/cancel a Google
+    Calendar event when a session/event is scheduled or changed; and (endgame, for
+    real booking) read **free/busy** to offer open slots for client self-
+    scheduling. Keep a thin **calendar-provider seam** so Outlook/CalDAV are
+    adapters later (same pattern as the billing/payments provider seams).
+  - **Gotcha — connecting a calendar ≠ signing in with Google.** Calendar needs
+    different, sensitive scopes and a *separate* consent grant (incremental auth)
+    with its own token storage — distinct from the existing Google sign-in. Adding
+    calendar scopes triggers Google's sensitive-scope verification (operational
+    TODO, like Stripe go-live).
+  - **Depends on:** the session-scheduling concept + notifications from the 1-on-1
+    work (something with a confirmed time to sync, and an email to attach `.ics`
+    to). Free/busy read is only needed for the self-scheduling/booking endgame.
 - **Photo/media storage limits:** R2 storage is the one usage that costs real
   money over time (R2 bills ~$0.015/GB-month *stored*, near-zero egress — so
   volume sitting in the bucket is the cost lever, not bandwidth). Today photo
